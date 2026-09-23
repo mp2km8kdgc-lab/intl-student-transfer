@@ -4,10 +4,10 @@ from openai import OpenAI
 import PyPDF2
 import docx
 
-OPENROUTER_API_KEY = os.environ.get（"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",""）
+OPENROUTER_API_KEY = os.environ.get（"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",""）
 if not OPENROUTER_API_KEY:
     try:
-        OPENROUTER_API_KEY = st.secrets["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"]
+        OPENROUTER_API_KEY = st.secrets["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"]
     except Exception:
         pass
 st.set_page_config(
