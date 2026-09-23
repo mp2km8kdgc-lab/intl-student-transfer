@@ -10,6 +10,21 @@ if not OPENROUTER_API_KEY:
         OPENROUTER_API_KEY = st.secrets["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"]
     except Exception:
         pass
+
+# 新增：读取模型名称，如果 Secrets 里没写，就默认用 openrouter/free
+MODEL_NAME = os.environ.get("OPENROUTER_MODEL", "")
+if not MODEL_NAME:
+    try:
+        MODEL_NAME = st.secrets.get("OPENROUTER_MODEL", "openrouter/free")
+    except Exception:
+        MODEL_NAME = "openrouter/free"
+
+client = None
+if OPENROUTER_API_KEY and OPENROUTER_API_KEY.startswith("sk-or-"):
+    client = OpenAI(
+        api_key=OPENROUTER_API_KEY,
+        base_url="https://openrouter.ai/api/v1"
+    )
 st.set_page_config(
     page_title="International Student Academic Assistant",
     page_icon="🎓",
