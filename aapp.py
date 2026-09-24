@@ -122,6 +122,18 @@ st.set_page_config(
     layout="wide"
 )
 
+# ---------- 隐藏 GitHub 链接和 Deploy 按钮，保留主菜单（夜览模式） ----------
+st.markdown(
+    """
+    <style>
+    footer {visibility: hidden;}
+    .stAppDeployButton {display: none;}
+    a[href*="github.com"] {display: none;}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # ---------- 记录历史 ----------
 def record_history(page_name, user_input, ai_response):
     record = {
