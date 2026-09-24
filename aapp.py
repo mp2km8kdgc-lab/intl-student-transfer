@@ -113,25 +113,13 @@ client = None
 if OPENROUTER_API_KEY and OPENROUTER_API_KEY.startswith("sk-or-"):
     client = OpenAI(
         api_key=OPENROUTER_API_KEY,
-        base_url="https://openrouter.ai/api/v1"  # ✅ 修复：纯字符串，无 XML 标签
+        base_url="https://openrouter.ai/api/v1"
     )
 
 st.set_page_config(
     page_title="International Student Academic Assistant",
     page_icon="🎓",
     layout="wide"
-)
-
-# ---------- 隐藏 GitHub 链接和 Deploy 按钮，保留主菜单（夜览模式） ----------
-st.markdown(
-    """
-    <style>
-    footer {visibility: hidden;}
-    .stAppDeployButton {display: none;}
-    a[href*="github.com"] {display: none;}
-    </style>
-    """,
-    unsafe_allow_html=True
 )
 
 # ---------- 记录历史 ----------
@@ -325,7 +313,7 @@ def assignment_helper():
 def transfer_info():
     st.header("🔄 Transfer Information")
     st.write("Get transfer planning advice based on assist.org course articulation logic.")
-    st.link_button("🌐 点击跳转到 assist.org 查询课程对应", "https://assist.org")  # ✅ 修复：纯 URL 字符串
+    st.link_button("🌐 点击跳转到 assist.org 查询课程对应", "https://assist.org")
     st.info("Note: assist.org has no public API. Results are AI-generated based on general knowledge. **Always verify on assist.org and target school official website.**")
     with st.form("transfer_form"):
         current_school = st.text_input("Current School", placeholder="e.g.: Kapi'olani Community College")
