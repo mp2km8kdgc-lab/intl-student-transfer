@@ -1,17 +1,31 @@
 import os
+import json
+from datetime import datetime
 import streamlit as st
 from openai import OpenAI
 import PyPDF2
 import docx
 
+# ================== 隐藏 GitHub 链接和默认菜单 ==================
+hide_style = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+.stAppDeployButton {display: none;}
+a[href*="github.com"] {display: none;}
+</style>
+"""
+st.markdown(hide_style, unsafe_allow_html=True)
+
+# ================== 读取密钥和模型 ==================
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 if not OPENROUTER_API_KEY:
     try:
-        OPENROUTER_API_KEY = st.secrets["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"]
+        OPENROUTER_API_KEY = st.secrets["OPENROUTER_API_KEY"]
     except Exception:
         pass
 
-# 新增：读取模型名称，如果 Secrets 里没写，就默认用 openrouter/free
 MODEL_NAME = os.environ.get("OPENROUTER_MODEL", "")
 if not MODEL_NAME:
     try:
@@ -25,25 +39,88 @@ if OPENROUTER_API_KEY and OPENROUTER_API_KEY.startswith("sk-or-"):
         api_key=OPENROUTER_API_KEY,
         base_url="https://openrouter.ai/api/v1"
     )
+
+# ================== 页面配置 ==================
 st.set_page_config(
     page_title="International Student Academic Assistant",
     page_icon="🎓",
     layout="wide"
 )
 
-client = None
-if OPENROUTER_API_KEY and OPENROUTER_API_KEY.startswith("sk-or-"):
-    client = OpenAI(
-        api_key=OPENROUTER_API_KEY,
-        base_url="https://openrouter.ai/api/v1"
-    )
+# ================== 初始化 session_state ==================
+if "history" not in st.session_state:
+    st.session_state.history = []
+if "language" not in st.session_state:
+    st.session_state.language = "English"
 
-def ask_deepseek(prompt, system_prompt="You are a helpful assistant."):
+# ================== 侧边栏：语言选择 ==================
+st.sidebar.title("🌐 Language / 语言")
+language_options = ["English", "中文", "日本語", "한국어", "Español"]
+st.session_state.language = st.sidebar.selectbox(
+    "Select AI response language",
+    language_options,
+    index=language_options.index(st.session_state.language)
+)
+
+st.sidebar.markdown("---")
+st.sidebar.title("🎓 Navigation")
+page = st.sidebar.radio(
+    "Select Page",
+    [
+        "1. Course Planner",
+        "2. Assignment Helper",
+        "3. Transfer Information",
+        "4. International Student FAQ",
+        "5. Syllabus Analysis"
+    ]
+)
+
+# ================== 侧边栏：历史记录管理 ==================
+st.sidebar.markdown("---")
+st.sidebar.title("📜 History")
+
+with st.sidebar.expander("导出 / 导入 / 清空", expanded=False):
+    # 导出
+    if st.session_state.history:
+        json_str = json.dumps(st.session_state.history, ensure_ascii=False, indent=2)
+        st.download_button(
+            label="⬇️ 导出历史记录 (JSON)",
+            data=json_str,
+            file_name=f"history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json"
+        )
+    else:
+        st.caption("暂无历史记录")
+
+    # 导入
+    uploaded_history = st.file_uploader("⬆️ 导入历史记录 (JSON)", type=["json"], key="history_upload")
+    if uploaded_history is not None:
+        try:
+            imported = json.load(uploaded_history)
+            if isinstance(imported, list):
+                st.session_state.history.extend(imported)
+                st.success(f"成功导入 {len(imported)} 条记录")
+            else:
+                st.error("JSON 格式错误：根元素必须是数组")
+        except Exception as e:
+            st.error(f"导入失败：{str(e)}")
+
+    # 清空
+    if st.button("🗑️ 清空所有历史记录"):
+        st.session_state.history = []
+        st.success("历史记录已清空")
+
+# 显示历史记录条数
+st.sidebar.caption(f"当前共 {len(st.session_state.history)} 条记录")
+
+# ================== 核心 AI 调用（自动记录历史） ==================
+def run_ai(prompt, system_prompt, page_name, user_summary):
+    """调用 AI，并自动将结果记录到历史"""
     if client is None:
-        return "⚠️ 后端未配置 API Key，请联系管理员，抖音364611067。"
+        return "⚠️ 后端未配置 API Key，请联系管理员。"
     try:
         response = client.chat.completions.create(
-            model="openrouter/free",
+            model=MODEL_NAME,
             extra_headers={
                 "HTTP-Referer": "https://localhost:8501",
                 "X-OpenRouter-Title": "International Student Academic Assistant"
@@ -54,10 +131,21 @@ def ask_deepseek(prompt, system_prompt="You are a helpful assistant."):
             ],
             stream=False
         )
-        return response.choices[0].message.content
+        answer = response.choices[0].message.content
     except Exception as e:
-        return f"AI Error: {str(e)}"
+        answer = f"AI Error: {str(e)}"
 
+    # 记录到历史
+    st.session_state.history.append({
+        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "page": page_name,
+        "user_summary": user_summary,
+        "language": st.session_state.language,
+        "ai_answer": answer
+    })
+    return answer
+
+# ================== 文件读取工具 ==================
 def extract_text_from_upload(uploaded_file):
     if uploaded_file is None:
         return ""
@@ -79,20 +167,7 @@ def extract_text_from_upload(uploaded_file):
     except Exception as e:
         return f"File read error: {str(e)}"
 
-st.sidebar.title("🎓 Navigation")
-page = st.sidebar.radio(
-    "Select Page",
-    [
-        "1. Course Planner",
-        "2. Assignment Helper",
-        "3. Transfer Information",
-        "4. International Student FAQ",
-        "5. Syllabus Analysis"
-    ]
-)
-st.sidebar.markdown("---")
-st.sidebar.caption("International Student Academic Assistant\n\nPrototype built with Python + Streamlit + OpenRouter")
-
+# ================== 各页面函数 ==================
 def course_planner():
     st.header("📚 Course Planner")
     st.write("Enter completed courses, target university and major to get course recommendations.")
@@ -105,9 +180,10 @@ def course_planner():
         if not completed or not target_school or not target_major:
             st.warning("Please fill in all fields.")
         else:
-            prompt = f"You are a US community college transfer advisor. Student's completed courses:\n{completed}\n\nTarget University: {target_school}\nTarget Major: {target_major}\n\nList remaining required courses and provide enrollment recommendations. Answer in Chinese with bullet points."
+            lang = st.session_state.language
+            prompt = f"You are a US community college transfer advisor. Student's completed courses:\n{completed}\n\nTarget University: {target_school}\nTarget Major: {target_major}\n\nList remaining required courses and provide enrollment recommendations. Please answer in {lang} with bullet points."
             with st.spinner("Analyzing..."):
-                result = ask_deepseek(prompt, "You are a professional academic advisor.")
+                result = run_ai(prompt, "You are a professional academic advisor.", "Course Planner", f"{target_school} / {target_major}")
             st.markdown("### AI Recommendations")
             st.markdown(result)
 
@@ -125,9 +201,10 @@ def assignment_helper():
         if not content:
             st.warning("Please paste text or upload a file.")
         else:
-            prompt = f"Analyze the following assignment instructions and output:\n1. What do I need to do?\n2. What is graded?\n3. Deadline\n4. Rubric\n\nAnswer in Chinese but keep English headings. If no explicit deadline or rubric found, state \"Not found in original text, confirm with professor\".\n\nAssignment:\n{content}"
+            lang = st.session_state.language
+            prompt = f"Analyze the following assignment instructions and output:\n1. What do I need to do?\n2. What is graded?\n3. Deadline\n4. Rubric\n\nPlease answer in {lang} but keep English headings. If no explicit deadline or rubric found, state \"Not found in original text, confirm with professor\".\n\nAssignment:\n{content}"
             with st.spinner("Analyzing..."):
-                result = ask_deepseek(prompt, "You are an academic assistant.")
+                result = run_ai(prompt, "You are an academic assistant.", "Assignment Helper", content[:100] + "...")
             st.markdown("### Analysis Result")
             st.markdown(result)
 
@@ -146,9 +223,10 @@ def transfer_info():
         if not current_school or not target_school or not major:
             st.warning("Please fill in current school, target university, and major.")
         else:
-            prompt = f"As a senior US college advisor, provide two or more transfer plans based on the following information, and explain how to adjust current weaknesses.\n\nCurrent School: {current_school}\nTarget University: {target_school}\nTarget Major: {major}\nCompleted Courses: {completed}\n\nReference assist.org articulation logic, but remind user to confirm with schools.\nAnswer in Chinese with bullet points."
+            lang = st.session_state.language
+            prompt = f"As a senior US college advisor, provide two or more transfer plans based on the following information, and explain how to adjust current weaknesses.\n\nCurrent School: {current_school}\nTarget University: {target_school}\nTarget Major: {major}\nCompleted Courses: {completed}\n\nReference assist.org articulation logic, but remind user to confirm with schools.\nPlease answer in {lang} with bullet points."
             with st.spinner("Planning..."):
-                result = ask_deepseek(prompt, "You are a senior US college advisor.")
+                result = run_ai(prompt, "You are a senior US college advisor.", "Transfer Information", f"{current_school} → {target_school}")
             st.markdown("### Transfer Plan & Advice")
             st.markdown(result)
 
@@ -170,9 +248,10 @@ def faq():
     question = st.text_input("Enter your specific question")
     if st.button("Ask"):
         if question.strip():
-            prompt = f"Answer the following international student question: {question}\n\nAnswer in Chinese and remind student to verify with school official information."
+            lang = st.session_state.language
+            prompt = f"Answer the following international student question: {question}\n\nPlease answer in {lang} and remind student to verify with school official information."
             with st.spinner("Answering..."):
-                answer = ask_deepseek(prompt, "You are an international student advisor.")
+                answer = run_ai(prompt, "You are an international student advisor.", "FAQ", question[:100])
             st.markdown("### Answer")
             st.markdown(answer)
         else:
@@ -193,11 +272,13 @@ def syllabus():
             st.warning("Please paste text or upload a file.")
         else:
             st.session_state['syllabus_text'] = content
-            prompt = f"Extract key information, required tasks, and exams from the following syllabus. Answer in Chinese with bullet points.\n\nSyllabus:\n{content}"
+            lang = st.session_state.language
+            prompt = f"Extract key information, required tasks, and exams from the following syllabus. Please answer in {lang} with bullet points.\n\nSyllabus:\n{content}"
             with st.spinner("Analyzing Syllabus..."):
-                result = ask_deepseek(prompt, "You are an academic assistant.")
+                result = run_ai(prompt, "You are an academic assistant.", "Syllabus Analysis", "Syllabus analysis")
             st.markdown("### Syllabus Analysis")
             st.markdown(result)
+
     if 'syllabus_text' in st.session_state:
         st.markdown("---")
         st.subheader("📊 Evaluate Completion & Score")
@@ -208,12 +289,14 @@ def syllabus():
             if not completed_tasks.strip():
                 st.warning("Please enter completed tasks.")
             else:
-                prompt = f"Based on the following syllabus, evaluate semester completion percentage and estimated score. Answer in Chinese with bullet points.\n\nSyllabus:\n{st.session_state['syllabus_text']}\n\nCompleted Tasks:\n{completed_tasks}"
+                lang = st.session_state.language
+                prompt = f"Based on the following syllabus, evaluate semester completion percentage and estimated score. Please answer in {lang} with bullet points.\n\nSyllabus:\n{st.session_state['syllabus_text']}\n\nCompleted Tasks:\n{completed_tasks}"
                 with st.spinner("Evaluating..."):
-                    evaluation = ask_deepseek(prompt, "You are an academic assistant.")
+                    evaluation = run_ai(prompt, "You are an academic assistant.", "Syllabus Evaluation", completed_tasks[:100])
                 st.markdown("### Evaluation Result")
                 st.markdown(evaluation)
 
+# ================== 路由 ==================
 if page == "1. Course Planner":
     course_planner()
 elif page == "2. Assignment Helper":
