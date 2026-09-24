@@ -119,16 +119,31 @@ if OPENROUTER_API_KEY and OPENROUTER_API_KEY.startswith("sk-or-"):
 st.set_page_config(
     page_title="International Student Academic Assistant",
     page_icon="🎓",
-    layout="wide"
+    layout="wide",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
 )
 
 # ---------- 隐藏 GitHub 链接和 Deploy 按钮，保留右上角主菜单（夜览模式可用） ----------
 st.markdown(
     """
     <style>
+    /* 隐藏页脚 */
     footer {visibility: hidden;}
-    .stAppDeployButton {display: none;}
-    a[href*="github.com"] {display: none;}
+    /* 隐藏 Deploy 按钮 */
+    .stAppDeployButton {display: none !important;}
+    /* 隐藏右上角 GitHub 图标/链接 */
+    a[href*="github.com"] {display: none !important;}
+    button[title*="GitHub"] {display: none !important;}
+    button[aria-label*="GitHub"] {display: none !important;}
+    [data-testid="stToolbar"] a[href*="github.com"] {display: none !important;}
+    [data-testid="stToolbar"] button[title*="GitHub"] {display: none !important;}
+    [data-testid="stToolbar"] button[aria-label*="GitHub"] {display: none !important;}
+    /* 隐藏主菜单中可能出现的 GitHub 相关项 */
+    [role="menu"] a[href*="github.com"] {display: none !important;}
     </style>
     """,
     unsafe_allow_html=True
@@ -261,7 +276,7 @@ if st.sidebar.button("清空历史记录"):
 st.sidebar.caption(f"共 {len(st.session_state.history)} 条记录")
 
 st.sidebar.markdown("---")
-st.sidebar.caption("International Student Academic Assistant\n\nPrototype built with Python + Streamlit + OpenRouter")
+st.sidebar.caption("International Student Academic Assistant\n\nPrototype built with Python + Streamlit + OpenRouter by hx6@hawaii.edu")
 
 # ---------- 页面 1 ----------
 def course_planner():
