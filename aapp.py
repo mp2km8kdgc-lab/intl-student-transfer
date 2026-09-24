@@ -1,24 +1,18 @@
 import os
 import json
-from datetime import datetime
+import datetime
 import streamlit as st
 from openai import OpenAI
 import PyPDF2
 import docx
 
-# ================== 隐藏 GitHub 链接和默认菜单 ==================
-hide_style = """
-<style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-header {visibility: hidden;}
-.stAppDeployButton {display: none;}
-a[href*="github.com"] {display: none;}
-</style>
-"""
-st.markdown(hide_style, unsafe_allow_html=True)
+# ---------- 初始化 session_state ----------
+if 'history' not in st.session_state:
+    st.session_state.history = []
+if 'language' not in st.session_state:
+    st.session_state.language = "English"
 
-# ================== 读取密钥和模型 ==================
+# ---------- API 配置 ----------
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 if not OPENROUTER_API_KEY:
     try:
@@ -40,82 +34,25 @@ if OPENROUTER_API_KEY and OPENROUTER_API_KEY.startswith("sk-or-"):
         base_url="https://openrouter.ai/api/v1"
     )
 
-# ================== 页面配置 ==================
 st.set_page_config(
     page_title="International Student Academic Assistant",
     page_icon="🎓",
     layout="wide"
 )
 
-# ================== 初始化 session_state ==================
-if "history" not in st.session_state:
-    st.session_state.history = []
-if "language" not in st.session_state:
-    st.session_state.language = "English"
+# ---------- 记录历史函数 ----------
+def record_history(page_name, user_input, ai_response):
+    record = {
+        "time": datetime.datetime.now().isoformat(),
+        "page": page_name,
+        "user_input": user_input[:300] + ("..." if len(user_input) > 300 else ""),
+        "ai_response": ai_response,
+        "language": st.session_state.language
+    }
+    st.session_state.history.append(record)
 
-# ================== 侧边栏：语言选择 ==================
-st.sidebar.title("🌐 Language / 语言")
-language_options = ["English", "中文", "日本語", "한국어", "Español"]
-st.session_state.language = st.sidebar.selectbox(
-    "Select AI response language",
-    language_options,
-    index=language_options.index(st.session_state.language)
-)
-
-st.sidebar.markdown("---")
-st.sidebar.title("🎓 Navigation")
-page = st.sidebar.radio(
-    "Select Page",
-    [
-        "1. Course Planner",
-        "2. Assignment Helper",
-        "3. Transfer Information",
-        "4. International Student FAQ",
-        "5. Syllabus Analysis"
-    ]
-)
-
-# ================== 侧边栏：历史记录管理 ==================
-st.sidebar.markdown("---")
-st.sidebar.title("📜 History")
-
-with st.sidebar.expander("导出 / 导入 / 清空", expanded=False):
-    # 导出
-    if st.session_state.history:
-        json_str = json.dumps(st.session_state.history, ensure_ascii=False, indent=2)
-        st.download_button(
-            label="⬇️ 导出历史记录 (JSON)",
-            data=json_str,
-            file_name=f"history_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-            mime="application/json"
-        )
-    else:
-        st.caption("暂无历史记录")
-
-    # 导入
-    uploaded_history = st.file_uploader("⬆️ 导入历史记录 (JSON)", type=["json"], key="history_upload")
-    if uploaded_history is not None:
-        try:
-            imported = json.load(uploaded_history)
-            if isinstance(imported, list):
-                st.session_state.history.extend(imported)
-                st.success(f"成功导入 {len(imported)} 条记录")
-            else:
-                st.error("JSON 格式错误：根元素必须是数组")
-        except Exception as e:
-            st.error(f"导入失败：{str(e)}")
-
-    # 清空
-    if st.button("🗑️ 清空所有历史记录"):
-        st.session_state.history = []
-        st.success("历史记录已清空")
-
-# 显示历史记录条数
-st.sidebar.caption(f"当前共 {len(st.session_state.history)} 条记录")
-
-# ================== 核心 AI 调用（自动记录历史） ==================
-def run_ai(prompt, system_prompt, page_name, user_summary):
-    """调用 AI，并自动将结果记录到历史"""
+# ---------- AI 调用 ----------
+def ask_deepseek(prompt, system_prompt="You are a helpful assistant."):
     if client is None:
         return "⚠️ 后端未配置 API Key，请联系管理员。"
     try:
@@ -131,21 +68,11 @@ def run_ai(prompt, system_prompt, page_name, user_summary):
             ],
             stream=False
         )
-        answer = response.choices[0].message.content
+        return response.choices[0].message.content
     except Exception as e:
-        answer = f"AI Error: {str(e)}"
+        return f"AI Error: {str(e)}"
 
-    # 记录到历史
-    st.session_state.history.append({
-        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "page": page_name,
-        "user_summary": user_summary,
-        "language": st.session_state.language,
-        "ai_answer": answer
-    })
-    return answer
-
-# ================== 文件读取工具 ==================
+# ---------- 文件读取工具 ----------
 def extract_text_from_upload(uploaded_file):
     if uploaded_file is None:
         return ""
@@ -167,7 +94,65 @@ def extract_text_from_upload(uploaded_file):
     except Exception as e:
         return f"File read error: {str(e)}"
 
-# ================== 各页面函数 ==================
+# ---------- 侧边栏 ----------
+st.sidebar.title("🎓 Navigation")
+page = st.sidebar.radio(
+    "Select Page",
+    [
+        "1. Course Planner",
+        "2. Assignment Helper",
+        "3. Transfer Information",
+        "4. International Student FAQ",
+        "5. Syllabus Analysis"
+    ]
+)
+
+# 语言选择
+language = st.sidebar.selectbox(
+    "Language / 语言",
+    ["English", "中文", "Español", "日本語", "한국어"],
+    index=0
+)
+st.session_state.language = language
+
+# 历史记录管理
+st.sidebar.markdown("---")
+st.sidebar.subheader("📜 History")
+if st.session_state.history:
+    json_str = json.dumps(st.session_state.history, ensure_ascii=False, indent=2)
+    st.sidebar.download_button(
+        label="导出历史记录 (JSON)",
+        data=json_str,
+        file_name="history.json",
+        mime="application/json"
+    )
+
+uploaded_history = st.sidebar.file_uploader(
+    "导入历史记录 (JSON)",
+    type=["json"],
+    key="history_uploader"
+)
+if uploaded_history is not None:
+    try:
+        imported = json.load(uploaded_history)
+        if isinstance(imported, list):
+            st.session_state.history.extend(imported)
+            st.sidebar.success(f"成功导入 {len(imported)} 条记录")
+        else:
+            st.sidebar.error("文件格式错误，应为 JSON 数组")
+    except Exception as e:
+        st.sidebar.error(f"导入失败: {e}")
+
+if st.sidebar.button("清空历史记录"):
+    st.session_state.history = []
+    st.sidebar.success("已清空")
+
+st.sidebar.caption(f"共 {len(st.session_state.history)} 条记录")
+
+st.sidebar.markdown("---")
+st.sidebar.caption("International Student Academic Assistant\n\nPrototype built with Python + Streamlit + OpenRouter")
+
+# ---------- 页面 1: Course Planner ----------
 def course_planner():
     st.header("📚 Course Planner")
     st.write("Enter completed courses, target university and major to get course recommendations.")
@@ -180,13 +165,19 @@ def course_planner():
         if not completed or not target_school or not target_major:
             st.warning("Please fill in all fields.")
         else:
-            lang = st.session_state.language
-            prompt = f"You are a US community college transfer advisor. Student's completed courses:\n{completed}\n\nTarget University: {target_school}\nTarget Major: {target_major}\n\nList remaining required courses and provide enrollment recommendations. Please answer in {lang} with bullet points."
+            prompt = (
+                f"You are a US community college transfer advisor. Student's completed courses:\n{completed}\n\n"
+                f"Target University: {target_school}\nTarget Major: {target_major}\n\n"
+                f"List remaining required courses and provide enrollment recommendations. "
+                f"Answer in {st.session_state.language} with bullet points."
+            )
             with st.spinner("Analyzing..."):
-                result = run_ai(prompt, "You are a professional academic advisor.", "Course Planner", f"{target_school} / {target_major}")
+                result = ask_deepseek(prompt, "You are a professional academic advisor.")
             st.markdown("### AI Recommendations")
             st.markdown(result)
+            record_history("Course Planner", f"Completed: {completed}\nTarget: {target_school} - {target_major}", result)
 
+# ---------- 页面 2: Assignment Helper ----------
 def assignment_helper():
     st.header("📝 Assignment Helper")
     st.write("Paste assignment text or upload a file to analyze requirements, grading criteria, deadlines, and rubric.")
@@ -201,13 +192,20 @@ def assignment_helper():
         if not content:
             st.warning("Please paste text or upload a file.")
         else:
-            lang = st.session_state.language
-            prompt = f"Analyze the following assignment instructions and output:\n1. What do I need to do?\n2. What is graded?\n3. Deadline\n4. Rubric\n\nPlease answer in {lang} but keep English headings. If no explicit deadline or rubric found, state \"Not found in original text, confirm with professor\".\n\nAssignment:\n{content}"
+            prompt = (
+                f"Analyze the following assignment instructions and output:\n"
+                f"1. What do I need to do?\n2. What is graded?\n3. Deadline\n4. Rubric\n\n"
+                f"Answer in {st.session_state.language} but keep English headings. "
+                f"If no explicit deadline or rubric found, state \"Not found in original text, confirm with professor\".\n\n"
+                f"Assignment:\n{content}"
+            )
             with st.spinner("Analyzing..."):
-                result = run_ai(prompt, "You are an academic assistant.", "Assignment Helper", content[:100] + "...")
+                result = ask_deepseek(prompt, "You are an academic assistant.")
             st.markdown("### Analysis Result")
             st.markdown(result)
+            record_history("Assignment Helper", content[:300], result)
 
+# ---------- 页面 3: Transfer Information ----------
 def transfer_info():
     st.header("🔄 Transfer Information")
     st.write("Get transfer planning advice based on assist.org course articulation logic.")
@@ -223,13 +221,21 @@ def transfer_info():
         if not current_school or not target_school or not major:
             st.warning("Please fill in current school, target university, and major.")
         else:
-            lang = st.session_state.language
-            prompt = f"As a senior US college advisor, provide two or more transfer plans based on the following information, and explain how to adjust current weaknesses.\n\nCurrent School: {current_school}\nTarget University: {target_school}\nTarget Major: {major}\nCompleted Courses: {completed}\n\nReference assist.org articulation logic, but remind user to confirm with schools.\nPlease answer in {lang} with bullet points."
+            prompt = (
+                f"As a senior US college advisor, provide two or more transfer plans based on the following information, "
+                f"and explain how to adjust current weaknesses.\n\n"
+                f"Current School: {current_school}\nTarget University: {target_school}\n"
+                f"Target Major: {major}\nCompleted Courses: {completed}\n\n"
+                f"Reference assist.org articulation logic, but remind user to confirm with schools.\n"
+                f"Answer in {st.session_state.language} with bullet points."
+            )
             with st.spinner("Planning..."):
-                result = run_ai(prompt, "You are a senior US college advisor.", "Transfer Information", f"{current_school} → {target_school}")
+                result = ask_deepseek(prompt, "You are a senior US college advisor.")
             st.markdown("### Transfer Plan & Advice")
             st.markdown(result)
+            record_history("Transfer Information", f"{current_school} -> {target_school} ({major})\nCompleted: {completed}", result)
 
+# ---------- 页面 4: International Student FAQ ----------
 def faq():
     st.header("❓ International Student FAQ")
     st.write("Common topics: I-20, SEVIS, transfer, employment, SSN, school resources.")
@@ -248,15 +254,19 @@ def faq():
     question = st.text_input("Enter your specific question")
     if st.button("Ask"):
         if question.strip():
-            lang = st.session_state.language
-            prompt = f"Answer the following international student question: {question}\n\nPlease answer in {lang} and remind student to verify with school official information."
+            prompt = (
+                f"Answer the following international student question: {question}\n\n"
+                f"Answer in {st.session_state.language} and remind student to verify with school official information."
+            )
             with st.spinner("Answering..."):
-                answer = run_ai(prompt, "You are an international student advisor.", "FAQ", question[:100])
+                answer = ask_deepseek(prompt, "You are an international student advisor.")
             st.markdown("### Answer")
             st.markdown(answer)
+            record_history("International Student FAQ", question, answer)
         else:
             st.warning("Please enter a question.")
 
+# ---------- 页面 5: Syllabus Analysis ----------
 def syllabus():
     st.header("📖 Syllabus Analysis")
     st.write("Extract key information, required tasks, exams, and evaluate completion status and estimated score.")
@@ -272,12 +282,15 @@ def syllabus():
             st.warning("Please paste text or upload a file.")
         else:
             st.session_state['syllabus_text'] = content
-            lang = st.session_state.language
-            prompt = f"Extract key information, required tasks, and exams from the following syllabus. Please answer in {lang} with bullet points.\n\nSyllabus:\n{content}"
+            prompt = (
+                f"Extract key information, required tasks, and exams from the following syllabus. "
+                f"Answer in {st.session_state.language} with bullet points.\n\nSyllabus:\n{content}"
+            )
             with st.spinner("Analyzing Syllabus..."):
-                result = run_ai(prompt, "You are an academic assistant.", "Syllabus Analysis", "Syllabus analysis")
+                result = ask_deepseek(prompt, "You are an academic assistant.")
             st.markdown("### Syllabus Analysis")
             st.markdown(result)
+            record_history("Syllabus Analysis", content[:300], result)
 
     if 'syllabus_text' in st.session_state:
         st.markdown("---")
@@ -289,14 +302,18 @@ def syllabus():
             if not completed_tasks.strip():
                 st.warning("Please enter completed tasks.")
             else:
-                lang = st.session_state.language
-                prompt = f"Based on the following syllabus, evaluate semester completion percentage and estimated score. Please answer in {lang} with bullet points.\n\nSyllabus:\n{st.session_state['syllabus_text']}\n\nCompleted Tasks:\n{completed_tasks}"
+                prompt = (
+                    f"Based on the following syllabus, evaluate semester completion percentage and estimated score. "
+                    f"Answer in {st.session_state.language} with bullet points.\n\n"
+                    f"Syllabus:\n{st.session_state['syllabus_text']}\n\nCompleted Tasks:\n{completed_tasks}"
+                )
                 with st.spinner("Evaluating..."):
-                    evaluation = run_ai(prompt, "You are an academic assistant.", "Syllabus Evaluation", completed_tasks[:100])
+                    evaluation = ask_deepseek(prompt, "You are an academic assistant.")
                 st.markdown("### Evaluation Result")
                 st.markdown(evaluation)
+                record_history("Syllabus Evaluation", f"Syllabus + Tasks: {completed_tasks[:200]}", evaluation)
 
-# ================== 路由 ==================
+# ---------- 路由 ----------
 if page == "1. Course Planner":
     course_planner()
 elif page == "2. Assignment Helper":
