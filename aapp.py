@@ -6,11 +6,93 @@ from openai import OpenAI
 import PyPDF2
 import docx
 
+# ============ JSON 帮助内容 ============
+JSON_HELP_CONTENT = {
+    "zh": """如何导出 JSON 历史记录
+
+第一步：找到按钮
+在当前页面的同一个侧边栏（或历史记录区域），
+寻找名字包含以下关键词的按钮：
+  ○「导出历史记录」或「下载历史记录」
+  ○「Export」或「Download」
+
+第二步：点击下载
+1. 直接点击该按钮。
+2. 浏览器会自动开始下载（或弹出保存提示），
+   下载下来的文件就是 .json 格式的历史记录。""",
+
+    "en": """How to Export Your JSON History
+
+Step 1: Find the button
+In the sidebar (or history area) of the current page,
+look for a button whose name contains one of these keywords:
+  o "Export History" or "Download History"
+  o "Export" or "Download"
+
+Step 2: Click to download
+1. Simply click the button.
+2. Your browser will start the download automatically
+   (or show a save prompt). The downloaded file is your
+   history in .json format.""",
+
+    "ja": """JSON履歴のエクスポート方法
+
+ステップ1：ボタンを探す
+現在のページのサイドバー（または履歴エリア）で、
+以下のキーワードを含むボタンを探してください：
+  ○「履歴をエクスポート」または「履歴をダウンロード」
+  ○「Export」または「Download」
+
+ステップ2：クリックしてダウンロード
+1. そのボタンをクリックします。
+2. ブラウザが自動的にダウンロードを開始します
+  （または保存ダイアログが表示されます）。
+   ダウンロードされたファイルが .json 形式の履歴データです。""",
+
+    "ko": """JSON 기록 내보내기 방법
+
+1단계: 버튼 찾기
+현재 페이지의 사이드바(또는 기록 영역)에서
+다음 키워드를 포함하는 버튼을 찾으세요:
+  ○ "기록 내보내기" 또는 "기록 다운로드"
+  ○ "Export" 또는 "Download"
+
+2단계: 클릭하여 다운로드
+1. 해당 버튼을 클릭하세요.
+2. 브라우저가 자동으로 다운로드를 시작합니다
+  (또는 저장 창이 표시됨).
+   다운로드된 파일이 .json 형식의 기록 데이터입니다.""",
+
+    "es": """Cómo exportar tu historial JSON
+
+Paso 1: Encuentra el botón
+En la barra lateral (o zona de historial) de la página actual,
+busca un botón cuyo nombre contenga alguna de estas palabras clave:
+  o "Exportar historial" o "Descargar historial"
+  o "Export" o "Download"
+
+Paso 2: Haz clic para descargar
+1. Haz clic directamente en el botón.
+2. El navegador iniciará la descarga automáticamente
+   (o mostrará un cuadro de guardar).
+   El archivo descargado es tu historial en formato .json."""
+}
+
+JSON_HELP_LANGS = {
+    "中文": "zh",
+    "English": "en",
+    "日本語": "ja",
+    "한국어": "ko",
+    "Español": "es"
+}
+
 # ---------- 初始化 session_state ----------
 if 'history' not in st.session_state:
     st.session_state.history = []
 if 'language' not in st.session_state:
     st.session_state.language = "English"
+if 'show_json_help' not in st.session_state:
+    st.session_state.show_json_help = False
 
 # ---------- API 配置 ----------
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
@@ -40,7 +122,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ---------- 记录历史函数 ----------
+# ---------- 记录历史 ----------
 def record_history(page_name, user_input, ai_response):
     record = {
         "time": datetime.datetime.now().isoformat(),
@@ -72,7 +154,7 @@ def ask_deepseek(prompt, system_prompt="You are a helpful assistant."):
     except Exception as e:
         return f"AI Error: {str(e)}"
 
-# ---------- 文件读取工具 ----------
+# ---------- 文件读取 ----------
 def extract_text_from_upload(uploaded_file):
     if uploaded_file is None:
         return ""
@@ -118,15 +200,37 @@ st.session_state.language = language
 # 历史记录管理
 st.sidebar.markdown("---")
 st.sidebar.subheader("📜 History")
-if st.session_state.history:
-    json_str = json.dumps(st.session_state.history, ensure_ascii=False, indent=2)
-    st.sidebar.download_button(
-        label="导出历史记录 (JSON)",
-        data=json_str,
-        file_name="history.json",
-        mime="application/json"
-    )
 
+# 导出按钮 + JSON 帮助按钮并排
+col1, col2 = st.sidebar.columns([3, 1])
+with col1:
+    if st.session_state.history:
+        json_str = json.dumps(st.session_state.history, ensure_ascii=False, indent=2)
+        st.download_button(
+            label="导出历史记录 (JSON)",
+            data=json_str,
+            file_name="history.json",
+            mime="application/json"
+        )
+    else:
+        st.caption("暂无历史记录")
+with col2:
+    if st.button("❓", key="json_help_btn", help="JSON 导出帮助"):
+        st.session_state.show_json_help = not st.session_state.show_json_help
+
+# JSON 帮助面板
+if st.session_state.show_json_help:
+    with st.sidebar.expander("JSON 导出帮助", expanded=True):
+        help_lang = st.radio(
+            "选择语言",
+            list(JSON_HELP_LANGS.keys()),
+            index=0,
+            key="json_help_lang"
+        )
+        lang_code = JSON_HELP_LANGS[help_lang]
+        st.markdown(JSON_HELP_CONTENT[lang_code])
+
+# 导入历史
 uploaded_history = st.sidebar.file_uploader(
     "导入历史记录 (JSON)",
     type=["json"],
@@ -152,7 +256,7 @@ st.sidebar.caption(f"共 {len(st.session_state.history)} 条记录")
 st.sidebar.markdown("---")
 st.sidebar.caption("International Student Academic Assistant\n\nPrototype built with Python + Streamlit + OpenRouter")
 
-# ---------- 页面 1: Course Planner ----------
+# ---------- 页面 1 ----------
 def course_planner():
     st.header("📚 Course Planner")
     st.write("Enter completed courses, target university and major to get course recommendations.")
@@ -177,7 +281,7 @@ def course_planner():
             st.markdown(result)
             record_history("Course Planner", f"Completed: {completed}\nTarget: {target_school} - {target_major}", result)
 
-# ---------- 页面 2: Assignment Helper ----------
+# ---------- 页面 2 ----------
 def assignment_helper():
     st.header("📝 Assignment Helper")
     st.write("Paste assignment text or upload a file to analyze requirements, grading criteria, deadlines, and rubric.")
@@ -205,7 +309,7 @@ def assignment_helper():
             st.markdown(result)
             record_history("Assignment Helper", content[:300], result)
 
-# ---------- 页面 3: Transfer Information ----------
+# ---------- 页面 3 ----------
 def transfer_info():
     st.header("🔄 Transfer Information")
     st.write("Get transfer planning advice based on assist.org course articulation logic.")
@@ -235,7 +339,7 @@ def transfer_info():
             st.markdown(result)
             record_history("Transfer Information", f"{current_school} -> {target_school} ({major})\nCompleted: {completed}", result)
 
-# ---------- 页面 4: International Student FAQ ----------
+# ---------- 页面 4 ----------
 def faq():
     st.header("❓ International Student FAQ")
     st.write("Common topics: I-20, SEVIS, transfer, employment, SSN, school resources.")
@@ -266,7 +370,7 @@ def faq():
         else:
             st.warning("Please enter a question.")
 
-# ---------- 页面 5: Syllabus Analysis ----------
+# ---------- 页面 5 ----------
 def syllabus():
     st.header("📖 Syllabus Analysis")
     st.write("Extract key information, required tasks, exams, and evaluate completion status and estimated score.")
