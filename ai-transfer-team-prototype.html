@@ -1,0 +1,1952 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 转学助手团队</title>
+<style>
+/* ==========================================================================
+   style.css — 共享样式（简洁 SaaS 风格，移动优先）
+   配色：墨蓝按钮 + 冷灰底；每位 AI 员工有自己的头像色（在 data.js 里配置）
+   ========================================================================== */
+:root {
+  --bg: #f3f5f8;
+  --card: #ffffff;
+  --text: #18202b;
+  --muted: #5d6877;
+  --line: #dde2ea;
+  --primary: #17324d;
+  --primary-hover: #0f2438;
+  --primary-weak: #e8eef5;
+  --ok: #15803d;
+  --warn: #b45309;
+  --bad: #b91c1c;
+  --radius: 10px;
+  --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1218;
+    --card: #161b23;
+    --text: #e6e9ef;
+    --muted: #9aa4b2;
+    --line: #28303b;
+    --primary: #7fa6d1;
+    --primary-hover: #9bbbe0;
+    --primary-weak: #1c2735;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+  }
+  .btn-primary { color: #0e1218; }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.65 var(--font);
+}
+a { color: var(--primary); }
+h1, h2, h3 { line-height: 1.3; margin: 0; }
+h1 { font-size: 1.35rem; }
+h2 { font-size: 1.1rem; margin-bottom: 12px; }
+h3 { font-size: 1rem; }
+p { margin: 0 0 8px; }
+.muted { color: var(--muted); }
+.container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* ---------- 顶栏 ---------- */
+.topbar { position: sticky; top: 0; z-index: 20; background: var(--card); border-bottom: 1px solid var(--line); }
+.topbar-inner { max-width: 1200px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.brand { font-weight: 700; text-decoration: none; color: var(--text); margin-right: auto; }
+.nav { display: flex; gap: 4px; }
+.nav a { padding: 6px 12px; border-radius: 8px; text-decoration: none; color: var(--muted); font-weight: 500; }
+.nav a:hover { background: var(--primary-weak); color: var(--text); }
+.nav a.active { background: var(--primary-weak); color: var(--text); font-weight: 700; }
+.nav-toggle { display: none; background: none; border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; color: var(--text); font: inherit; cursor: pointer; }
+.mock-banner { background: #fef3c7; color: #78350f; font-size: 13px; text-align: center; padding: 6px 12px; }
+@media (prefers-color-scheme: dark) { .mock-banner { background: #3a2a0a; color: #fcd34d; } }
+
+@media (max-width: 720px) {
+  .nav-toggle { display: inline-block; }
+  .nav { display: none; width: 100%; flex-direction: column; }
+  .nav.open { display: flex; }
+  .nav a { padding: 10px 12px; }
+}
+
+/* ---------- 员工档案条 ---------- */
+.agent-bar { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; }
+.avatar { flex: none; width: 52px; height: 52px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-size: 1.3rem; font-weight: 700; }
+.agent-meta { flex: 1; min-width: 0; }
+.agent-meta p { margin: 2px 0 0; font-size: 14px; }
+.agent-no { font-size: 12px; color: var(--muted); }
+.status { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); }
+.status i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.status-working i { background: var(--ok); animation: pulse 1.2s ease-in-out infinite; }
+.status-review i { background: var(--warn); }
+@keyframes pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .status-working i { animation: none; } }
+@media (max-width: 560px) { .agent-bar { flex-wrap: wrap; } .status { margin-left: 66px; } }
+
+/* ---------- 卡片 / 表单 / 按钮 ---------- */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: end; }
+.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.field.wide { grid-column: 1 / -1; }
+input, select, textarea {
+  width: 100%; font: inherit; color: var(--text); background: var(--card);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+}
+textarea { resize: vertical; min-height: 64px; }
+.btn { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+.btn:hover { background: var(--primary-weak); }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-danger { color: var(--bad); }
+.btn-sm { padding: 3px 9px; font-size: 13px; }
+.btn[disabled] { opacity: .55; cursor: not-allowed; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.toolbar .spacer { margin-left: auto; }
+
+.badge { display: inline-block; font-size: 12px; line-height: 1.5; padding: 0 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.badge-warn { color: var(--warn); border-color: var(--warn); }
+.badge-ok { color: var(--ok); border-color: var(--ok); }
+.badge-bad { color: var(--bad); border-color: var(--bad); }
+.badge-mock { background: #fef3c7; border-color: #fde68a; color: #78350f; }
+@media (prefers-color-scheme: dark) { .badge-mock { background: #3a2a0a; border-color: #5b4210; color: #fcd34d; } }
+
+.empty { text-align: center; color: var(--muted); padding: 28px 12px; }
+
+/* ---------- 表格 ---------- */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { background: var(--primary-weak); font-weight: 600; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+.nf { color: var(--muted); font-style: italic; }
+.src { text-decoration: none; margin-left: 2px; font-size: 12px; }
+.stale { color: var(--warn); }
+.nowrap { white-space: nowrap; }
+.row-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+table.research { min-width: 1500px; }
+table.research td:nth-child(5), table.research td:nth-child(6) { min-width: 170px; }
+
+/* ---------- 弹窗 ---------- */
+dialog { border: 1px solid var(--line); border-radius: var(--radius); padding: 0; width: min(680px, calc(100vw - 24px)); background: var(--card); color: var(--text); }
+dialog::backdrop { background: rgba(10, 15, 25, .5); }
+.dialog-body { padding: 16px; max-height: 70vh; overflow-y: auto; }
+.dialog-foot { padding: 12px 16px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ---------- Tab ---------- */
+.tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.tab { font: inherit; background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 12px; color: var(--muted); cursor: pointer; }
+.tab.active { color: var(--text); font-weight: 700; border-bottom-color: var(--primary); }
+.out-sec { margin-bottom: 14px; }
+.out-sec h3 { margin-bottom: 4px; }
+.out-sec p { margin: 0 0 4px; white-space: pre-wrap; }
+.notice { border-left: 3px solid var(--warn); background: var(--primary-weak); padding: 8px 12px; border-radius: 0 8px 8px 0; font-size: 14px; margin-bottom: 12px; }
+
+/* ---------- 聊天 ---------- */
+.support-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+@media (max-width: 900px) { .support-layout { grid-template-columns: 1fr; } }
+.chat-log { height: 52vh; min-height: 320px; overflow-y: auto; padding: 4px 2px; display: flex; flex-direction: column; gap: 10px; }
+.msg { display: flex; }
+.msg.me { justify-content: flex-end; }
+.bubble { max-width: 88%; padding: 9px 13px; border-radius: 14px; white-space: pre-wrap; background: var(--primary-weak); }
+.msg.me .bubble { background: var(--primary); color: #fff; }
+@media (prefers-color-scheme: dark) { .msg.me .bubble { color: #0e1218; } }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.chip { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.chip:hover { background: var(--primary-weak); }
+.chat-input { display: flex; gap: 8px; }
+.chat-input .btn { white-space: nowrap; }
+.chat-input textarea { min-height: 44px; height: 44px; }
+.rec-group { border-left: 4px solid var(--line); padding: 6px 0 6px 12px; margin: 10px 0 0; }
+.rec-group.safety { border-left-color: var(--ok); }
+.rec-group.match { border-left-color: #1d4ed8; }
+.rec-group.reach { border-left-color: var(--warn); }
+.rec-item { margin: 8px 0; font-size: 14px; }
+.rec-item .meta { color: var(--muted); font-size: 13px; }
+.progress { height: 6px; background: var(--line); border-radius: 999px; overflow: hidden; margin: 6px 0 12px; }
+.progress div { height: 100%; background: var(--ok); }
+
+/* ---------- Analytics ---------- */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.kpi .num { font-size: 1.7rem; font-weight: 700; line-height: 1.2; }
+.kpi .label { font-size: 13px; color: var(--muted); }
+.two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.bar-row { display: grid; grid-template-columns: minmax(90px, 40%) 1fr 38px; gap: 8px; align-items: center; font-size: 13px; margin: 6px 0; }
+.bar-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar-track { background: var(--primary-weak); border-radius: 6px; height: 12px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--primary); border-radius: 6px; }
+.bar-row .val { text-align: right; color: var(--muted); }
+.trend-svg { width: 100%; height: auto; display: block; }
+.trend-svg text { fill: var(--muted); font-size: 11px; }
+.list-plain { margin: 0; padding-left: 18px; }
+.list-plain li { margin-bottom: 8px; }
+
+/* ---------- 主页卡片 ---------- */
+.hero { padding: 20px 4px 8px; }
+.hero p { max-width: 62ch; }
+.team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 12px 0 16px; }
+.team-card { display: flex; flex-direction: column; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; text-decoration: none; color: var(--text); }
+.team-card:hover { border-color: var(--primary); }
+.team-card .top { display: flex; align-items: center; gap: 12px; }
+.team-card p { margin: 0; color: var(--muted); font-size: 14px; }
+.team-card .foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+
+/* ---------- 提示 / 页脚 ---------- */
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: var(--primary); color: #fff; padding: 9px 16px; border-radius: 8px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 50; max-width: 90vw; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast-error { background: var(--bad); color: #fff; }
+@media (prefers-color-scheme: dark) { .toast { color: #0e1218; } .toast-error { color: #0e1218; } }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+.disclaimer { margin-top: 8px; padding-top: 14px; padding-bottom: 28px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+
+[hidden] { display: none !important; }
+
+</style>
+</head>
+<body>
+<div id="site-header"></div>
+<main class="container">
+<div id="agent-bar"></div>
+<section class="panel" id="panel-home">
+  <div class="hero">
+    <h1>AI 转学助手团队</h1>
+    <p class="muted">四位 AI 员工分工协作：Research 查资料，Content 把资料改写成内容，Support 和学生对话并选校，Analytics 汇总问题、指出下一步该做什么。</p>
+  </div>
+  <div class="team-grid" id="home-cards"></div>
+  <div class="card">
+    <h2>怎么用</h2>
+    <ol class="list-plain">
+      <li><strong>Research</strong>：输入学校和专业，点“开始研究”。Mock 模式内置 UC Berkeley、UCLA、UC San Diego、UC Davis、UT Austin、University of Washington、Arizona State University，其他学校会显示“未找到”。</li>
+      <li><strong>Content</strong>：选一条 Research 记录和平台，点“点击生成”，复制或保存脚本、博客、FAQ。</li>
+      <li><strong>Support</strong>：像学生一样聊天，补全 8 项信息后得到保底 / 匹配 / 冲刺建议。</li>
+      <li><strong>Analytics</strong>：查看高频问题、热门学校和下周内容建议，可导出 CSV。</li>
+    </ol>
+    <p class="muted">所有数据保存在你浏览器的 localStorage 里，换浏览器或清除站点数据后会消失。</p>
+  </div>
+</section>
+
+<section class="panel" id="panel-research" hidden>
+  <form id="r-form" class="card">
+    <h2>研究条件</h2>
+    <div class="form-grid">
+      <label class="field">学校<input id="r-school" placeholder="如 UCLA" autocomplete="off"></label>
+      <label class="field">专业<input id="r-major" placeholder="如 计算机 / Economics" autocomplete="off"></label>
+      <label class="field">州<input id="r-state" list="r-states" placeholder="如 CA" maxlength="2" autocomplete="off"><datalist id="r-states"></datalist></label>
+      <label class="field">学位类型<select id="r-degree"><option>本科</option><option>副学士</option><option>硕士</option></select></label>
+      <label class="field">学制<select id="r-term"><option>两年制社区学院转四年制</option><option>四年制转四年制</option></select></label>
+      <button class="btn btn-primary" id="r-run" type="submit">开始研究</button>
+    </div>
+  </form>
+  <section class="card">
+    <div class="toolbar">
+      <button class="btn" id="r-add" type="button">新增</button>
+      <button class="btn" id="r-json" type="button">导出 JSON</button>
+      <button class="btn" id="r-csv" type="button">导出 CSV</button>
+      <button class="btn" id="r-copy" type="button">复制全部</button>
+      <button class="btn btn-danger spacer" id="r-clear" type="button">清空全部</button>
+    </div>
+    <div class="table-wrap"><table class="research"><thead id="r-thead"></thead><tbody id="r-tbody"></tbody></table></div>
+    <p class="muted" id="r-count" style="margin-top:8px"></p>
+  </section>
+  <dialog id="r-dialog">
+    <form id="r-edit" method="dialog">
+      <div class="dialog-body">
+        <h2 id="r-dialog-title">编辑记录</h2>
+        <p class="muted" style="font-size:13px">“最后更新”会记为你保存的日期。来源链接请填写能核实这条信息的官方页面。</p>
+        <div class="form-grid" id="r-edit-fields"></div>
+      </div>
+      <div class="dialog-foot">
+        <button class="btn" id="r-cancel" type="button">取消</button>
+        <button class="btn btn-primary" type="submit">保存</button>
+      </div>
+    </form>
+  </dialog>
+</section>
+
+<section class="panel" id="panel-content" hidden>
+  <div class="notice"><strong>内容基于 Research 数据，不能歪曲来源。</strong>数据里没有的信息会标注“未找到”，发布前请人工核实。</div>
+  <div class="card">
+    <h2>生成内容</h2>
+    <div class="form-grid">
+      <label class="field wide">选择 Research 记录<select id="c-select"></select></label>
+      <label class="field">平台
+        <select id="c-platform">
+          <option value="tiktok">TikTok</option>
+          <option value="reel">Instagram Reel</option>
+          <option value="shorts">YouTube Short</option>
+          <option value="blog">Blog</option>
+          <option value="faq">FAQ</option>
+        </select>
+      </label>
+      <button class="btn btn-primary" id="c-gen" type="button">点击生成</button>
+    </div>
+    <p class="muted" id="c-empty" hidden style="margin:10px 0 0">还没有可用的 Research 记录。先到 <a href="#research">Research</a> 研究一所学校。</p>
+  </div>
+  <div class="card">
+    <div class="tabs" id="c-tabs" role="tablist"></div>
+    <div id="c-result"></div>
+    <div class="toolbar" id="c-actions" style="margin:12px 0 0"></div>
+  </div>
+  <div class="card"><h2>已保存的内容</h2><div id="c-saved"></div></div>
+</section>
+
+<section class="panel" id="panel-support" hidden>
+  <div class="support-layout">
+    <div class="card">
+      <div class="toolbar"><h2 style="margin:0">对话</h2><button class="btn btn-sm spacer" id="s-new" type="button">新对话</button></div>
+      <div class="chat-log" id="s-log" aria-live="polite"></div>
+      <div class="chips" id="s-chips"></div>
+      <div class="chat-input">
+        <textarea id="s-input" rows="1" placeholder="输入你的情况或问题"></textarea>
+        <button class="btn btn-primary" id="s-send" type="button">发送</button>
+      </div>
+      <p class="muted" style="margin:8px 0 0;font-size:13px">不是法律或移民建议，招生政策以学校官网为准。</p>
+    </div>
+    <aside class="card">
+      <h2>我的信息</h2>
+      <div class="progress"><div id="s-bar" style="width:0"></div></div>
+      <p class="muted" id="s-count" style="font-size:13px"></p>
+      <form id="s-profile" class="form-grid" style="grid-template-columns:1fr"></form>
+    </aside>
+  </div>
+</section>
+
+<section class="panel" id="panel-analytics" hidden>
+  <div class="notice" id="a-note">不显示学生隐私信息：只统计问题主题和次数，不保存、不展示学生原话。</div>
+  <div class="toolbar">
+    <button class="btn" id="a-refresh" type="button">刷新</button>
+    <button class="btn" id="a-csv" type="button">导出 CSV</button>
+    <button class="btn btn-danger spacer" id="a-reset" type="button">清空本机聊天统计</button>
+  </div>
+  <div class="kpis" id="a-kpis"></div>
+  <div class="two-col">
+    <div class="card"><h2>Top 10 高频问题</h2><div id="a-top"></div></div>
+    <div class="card"><h2>最近 7 天问题趋势</h2><div id="a-trend"></div></div>
+  </div>
+  <div class="two-col" style="margin-top:16px">
+    <div class="card"><h2>热门专业</h2><div id="a-majors"></div></div>
+    <div class="card"><h2>热门学校</h2><div id="a-schools"></div></div>
+  </div>
+  <div class="card">
+    <h2>高频问题明细</h2>
+    <div class="table-wrap"><table><thead><tr><th>问题</th><th>次数</th><th>占比</th><th>建议内容</th></tr></thead><tbody id="a-tbody"></tbody></table></div>
+  </div>
+  <div class="two-col">
+    <div class="card"><h2>下周内容建议</h2><ul class="list-plain" id="a-next"></ul></div>
+    <div class="card"><h2>需要更新 Research 的学校和专业</h2><ul class="list-plain" id="a-update"></ul></div>
+  </div>
+</section>
+
+</main>
+<footer id="site-footer"></footer>
+
+<!-- ① Mock 数据：接真实 API 后可删除 schools / seed 部分 -->
+<script>
+/* ==========================================================================
+   data.js — Mock 数据（仅用于原型）
+   ⚠️ 所有院校数值都是“示例数据”，不是真实招生政策。
+   接入真实 API 后，可以整体删除 schools / seed 相关字段，只保留 employees。
+   ========================================================================== */
+(function () {
+  "use strict";
+
+  // 生成一条 Research 记录，缺失字段一律为 null（界面显示“未找到”，不编造）
+  const R = (o) =>
+    Object.assign(
+      {
+        mock: true,
+        state: "",
+        degree: "本科",
+        term: "两年制社区学院转四年制",
+        gpaMin: null,
+        gpaRec: null,
+        prereqs: [],
+        requirements: null,
+        credits: null,
+        deadline: null,
+        intl: null,
+        english: null,
+        source: null,
+        fieldSources: {}, // 可选：{ gpaRec: "https://..." }，字段级来源优先于 source
+        updatedAt: null,
+        confidence: "低",
+      },
+      o
+    );
+
+  window.DATA = {
+    /* ---------- 四个 AI 员工 ---------- */
+    employees: [
+      {
+        id: "research",
+        name: "Research 研究员",
+        title: "AI Research 研究员工",
+        no: "AI #1",
+        duty: "查找并整理各校转学要求，每条结论都附来源和更新时间；查不到就写“未找到”。",
+        avatar: "研",
+        color: "#0f766e",
+        page: "research.html",
+      },
+      {
+        id: "content",
+        name: "Content 内容员",
+        title: "AI Content 内容员工",
+        no: "AI #2",
+        duty: "把 Research 数据改写成短视频脚本、博客和 FAQ，不歪曲来源。",
+        avatar: "文",
+        color: "#b45309",
+        page: "content.html",
+      },
+      {
+        id: "support",
+        name: "Support 客服员",
+        title: "AI Customer Support 客服员工",
+        no: "AI #3",
+        duty: "和学生对话、收集背景，按保底 / 匹配 / 冲刺给出选校建议和下一步。",
+        avatar: "客",
+        color: "#1d4ed8",
+        page: "support.html",
+      },
+      {
+        id: "analytics",
+        name: "Analytics 分析员",
+        title: "AI Analytics 分析员工",
+        no: "AI #4",
+        duty: "汇总高频问题和热门学校，建议下周内容，并指出需要更新的 Research。",
+        avatar: "析",
+        color: "#7e22ce",
+        page: "analytics.html",
+      },
+    ],
+
+    /* ---------- 专业字典（用于匹配和统计） ---------- */
+    majors: [
+      { key: "cs", zh: "计算机科学", en: "Computer Science", aliases: ["计算机", "computer science"] },
+      { key: "business", zh: "商科", en: "Business Administration", aliases: ["商科", "商业", "工商", "business"] },
+      { key: "econ", zh: "经济学", en: "Economics", aliases: ["经济", "economics"] },
+      { key: "bio", zh: "生物学", en: "Biology", aliases: ["生物", "biology"] },
+      { key: "psych", zh: "心理学", en: "Psychology", aliases: ["心理", "psychology"] },
+    ],
+
+    /* ---------- 学校别名（用于从对话里识别目标学校） ---------- */
+    schoolAliases: {
+      "UC Berkeley": ["berkeley", "伯克利"],
+      UCLA: ["ucla", "加州大学洛杉矶"],
+      "UC San Diego": ["ucsd", "san diego", "圣地亚哥"],
+      "UC Davis": ["davis", "戴维斯"],
+      "UT Austin": ["ut austin", "德州大学奥斯汀", "奥斯汀"],
+      "University of Washington": ["uw", "华盛顿大学", "university of washington"],
+      "Arizona State University": ["asu", "亚利桑那州立"],
+    },
+
+    /* ---------- Research mock 记录（全部是示例，confidence 默认“低”） ---------- */
+    schools: [
+      R({
+        school: "UC Berkeley", major: "Computer Science", state: "CA",
+        gpaRec: 3.8,
+        prereqs: ["微积分 I-II", "线性代数", "程序设计入门", "数据结构"],
+        requirements: "需完成指定主修先修课，清单以官网为准",
+        deadline: "11/30",
+        intl: "与国内生同一申请流程，需提交语言成绩",
+        source: "https://admissions.berkeley.edu/",
+        updatedAt: "2026-09-18",
+      }),
+      R({
+        school: "UCLA", major: "Computer Science", state: "CA",
+        gpaMin: 3.0, gpaRec: 3.7,
+        prereqs: ["微积分 I-II", "线性代数", "程序设计入门"],
+        deadline: "11/30",
+        english: "TOEFL / IELTS，分数线见官网",
+        source: "https://admission.ucla.edu/",
+        updatedAt: "2026-09-10",
+        confidence: "中",
+      }),
+      R({
+        school: "UCLA", major: "Psychology", state: "CA",
+        gpaRec: 3.6,
+        prereqs: ["统计学", "心理学导论"],
+        deadline: "11/30",
+        source: "https://admission.ucla.edu/",
+        updatedAt: "2026-05-02",
+      }),
+      R({
+        school: "UC San Diego", major: "Computer Science", state: "CA",
+        gpaMin: 2.8, gpaRec: 3.6,
+        prereqs: ["微积分 I-II", "线性代数", "程序设计入门"],
+        requirements: "部分先修课需在申请前完成",
+        credits: "以官网转学学分说明为准",
+        deadline: "11/30",
+        intl: "国际生需额外提供语言成绩",
+        english: "TOEFL / IELTS / Duolingo，分数线见官网",
+        source: "https://admissions.ucsd.edu/",
+        updatedAt: "2026-09-22",
+        confidence: "中",
+      }),
+      R({
+        school: "UC San Diego", major: "Economics", state: "CA",
+        gpaRec: 3.4,
+        prereqs: ["微观经济学", "宏观经济学", "微积分"],
+        deadline: "11/30",
+        source: "https://admissions.ucsd.edu/",
+        updatedAt: "2026-09-22",
+      }),
+      R({
+        school: "UC Davis", major: "Biology", state: "CA",
+        gpaMin: 2.8, gpaRec: 3.3,
+        prereqs: ["普通生物", "普通化学", "有机化学"],
+        deadline: "11/30",
+        source: "https://admissions.ucdavis.edu/",
+        updatedAt: "2026-08-30",
+        confidence: "中",
+      }),
+      R({
+        school: "UC Davis", major: "Economics", state: "CA",
+        gpaRec: 3.2,
+        prereqs: ["微观经济学", "宏观经济学", "微积分"],
+        source: "https://admissions.ucdavis.edu/",
+        updatedAt: "2026-08-30",
+      }),
+      R({
+        school: "UT Austin", major: "Business Administration", state: "TX",
+        gpaRec: 3.5,
+        prereqs: ["会计导论", "微观经济学", "微积分"],
+        requirements: "常规转学申请，需成绩单与文书",
+        deadline: "3/1",
+        intl: "国际生需完成额外材料，见官网",
+        source: "https://admissions.utexas.edu/",
+        updatedAt: "2026-07-14",
+      }),
+      R({
+        school: "UT Austin", major: "Computer Science", state: "TX",
+        gpaRec: 3.7,
+        prereqs: ["微积分 I-II", "程序设计入门"],
+        deadline: "3/1",
+        source: "https://admissions.utexas.edu/",
+        updatedAt: "2026-04-20",
+      }),
+      R({
+        school: "University of Washington", major: "Computer Science", state: "WA",
+        requirements: "该专业设有单独的专业申请流程，细节见官网",
+        source: "https://admissions.uw.edu/",
+        updatedAt: "2026-06-01",
+        confidence: "低",
+      }),
+      R({
+        school: "University of Washington", major: "Economics", state: "WA",
+        gpaRec: 3.3,
+        prereqs: ["微观经济学", "宏观经济学", "微积分"],
+        deadline: "2/15",
+        source: "https://admissions.uw.edu/",
+        updatedAt: "2026-09-05",
+        confidence: "中",
+      }),
+      R({
+        school: "Arizona State University", major: "Computer Science", state: "AZ",
+        gpaMin: 2.5, gpaRec: 3.0,
+        prereqs: ["微积分 I", "程序设计入门"],
+        deadline: "滚动录取",
+        english: "TOEFL / IELTS，分数线见官网",
+        source: "https://admission.asu.edu/",
+        updatedAt: "2026-09-12",
+        confidence: "中",
+      }),
+      R({
+        school: "Arizona State University", major: "Business Administration", state: "AZ",
+        gpaMin: 2.5, gpaRec: 3.0,
+        prereqs: ["会计导论", "微观经济学"],
+        deadline: "滚动录取",
+        source: "https://admission.asu.edu/",
+        updatedAt: "2026-09-12",
+        confidence: "中",
+      }),
+    ],
+
+    // 返回一条全空记录（Research 查不到时使用）
+    blankRecord: () => R({}),
+
+    /* ---------- 高频问题主题（Analytics 用关键词归类，不保存学生原话） ---------- */
+    topics: [
+      { key: "credits", name: "学分够不够、能转多少学分", kw: ["学分", "credit"], seedCount: 42, suggestion: "做一期“转学前需要修满多少学分”的短视频 + FAQ" },
+      { key: "gpa", name: "GPA 要求与竞争力", kw: ["gpa", "绩点"], seedCount: 38, suggestion: "用 Research 数据整理“各校 GPA 参考区间”博客" },
+      { key: "prereq", name: "先修课清单", kw: ["先修", "prereq", "课程"], seedCount: 31, suggestion: "按专业做先修课对照表，附官方来源" },
+      { key: "deadline", name: "转学截止日期", kw: ["截止", "deadline", "什么时候"], seedCount: 27, suggestion: "做一条“本季转学截止日期”日历图文" },
+      { key: "intl", name: "国际生申请流程", kw: ["国际生", "international"], seedCount: 24, suggestion: "写国际生转学材料清单 FAQ（注明不是移民建议）" },
+      { key: "english", name: "英语成绩要求", kw: ["英语", "托福", "toefl", "ielts", "雅思", "duolingo"], seedCount: 19, suggestion: "整理各校英语成绩要求并标注更新时间" },
+      { key: "selection", name: "选校：保底 / 匹配 / 冲刺", kw: ["选校", "保底", "匹配", "冲刺", "申请什么", "哪些学校"], seedCount: 17, suggestion: "做一期“怎么给自己的转学选校分层”脚本" },
+      { key: "major", name: "热门专业与转专业", kw: ["转专业", "热门专业", "专业"], seedCount: 12, suggestion: "对比热门专业的转学难度，引用 Research 数据" },
+      { key: "essay", name: "文书与个人陈述", kw: ["文书", "essay", "piq", "个人陈述"], seedCount: 9, suggestion: "写一篇转学文书结构指南博客" },
+      { key: "aid", name: "学费与奖学金", kw: ["学费", "奖学金", "financial aid", "费用"], seedCount: 6, suggestion: "先让 Research 补充学费与资助信息，再出内容" },
+    ],
+
+    /* ---------- Analytics 种子数据（演示用，真实接入后由后端返回） ---------- */
+    seedConversations: 128,
+    seedUnresolved: 7,
+    trendSeed: [18, 22, 19, 27, 31, 29, 35], // 最近 7 天，最后一个是今天
+    schoolSeed: [
+      { name: "UC San Diego", count: 30 },
+      { name: "UCLA", count: 26 },
+      { name: "UC Berkeley", count: 22 },
+      { name: "UC Davis", count: 14 },
+      { name: "UT Austin", count: 11 },
+      { name: "University of Washington", count: 8 },
+    ],
+    majorSeed: [
+      { key: "cs", count: 44 },
+      { key: "econ", count: 21 },
+      { key: "business", count: 18 },
+      { key: "bio", count: 12 },
+      { key: "psych", count: 9 },
+    ],
+  };
+})();
+
+</script>
+<!-- ② API 封装：把 CONFIG.USE_MOCK 改成 false 即走 fetch('/api/...') -->
+<script>
+/* ==========================================================================
+   api.js — 统一 API 出口（先 mock，预留 fetch）
+
+   接真实 API 的步骤：
+     1. 把 CONFIG.USE_MOCK 改成 false
+     2. 后端实现下面 4 个接口（路径固定）：
+          POST /api/research   body: payload                      → { records: [...] }
+          POST /api/content    body: { researchId, platform, research } → { data, sourceNote, ... }
+          POST /api/support    body: { messages, profile }        → { reply, profileUpdates, missing, complete, recommendations, tempAdvice, meta }
+          GET  /api/analytics                                      → { cards, topQuestions, trend, topMajors, ... }
+     3. 返回格式见各 mock 函数末尾的对象，保持一致页面就不用改。
+
+   🔒 安全：任何 API Key 都只能放在后端（环境变量）。前端只调用 /api/...，
+      绝对不要在这里、HTML 或 localStorage 里写 Key。
+   ========================================================================== */
+const API = (() => {
+  "use strict";
+
+  const CONFIG = {
+    USE_MOCK: true,
+    BASE_URL: "", // 同域部署留空；跨域时填后端地址（后端需配置 CORS）
+    TIMEOUT_MS: 30000,
+  };
+
+  const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function http(method, path, body) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), CONFIG.TIMEOUT_MS);
+    try {
+      const res = await fetch(CONFIG.BASE_URL + path, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: method === "GET" ? undefined : JSON.stringify(body || {}),
+        signal: ctrl.signal,
+      });
+      if (!res.ok) throw new Error("服务器返回 " + res.status);
+      return await res.json();
+    } catch (e) {
+      throw new Error(e.name === "AbortError" ? "请求超时" : e.message);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /* ====================================================================
+     以下全部是 mock 实现。接真实 API 后可整体删除。
+     ==================================================================== */
+  const has = (v) => !(v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0));
+  const NF = "（Research 数据中未找到，发布前请核实）";
+  const txt = (v) => (has(v) ? (Array.isArray(v) ? v.join("、") : String(v)) : NF);
+  const sh = (v) => (has(v) ? (Array.isArray(v) ? v.join("/") : String(v)) : "未找到");
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  const lower = (s) => String(s || "").trim().toLowerCase();
+
+  function findMajor(text) {
+    const t = lower(text);
+    if (!t) return null;
+    return DATA.majors.find((m) => [m.en, m.zh, ...m.aliases].some((a) => t.includes(lower(a)))) || null;
+  }
+  function majorMatch(recMajor, query) {
+    const m = findMajor(query);
+    return m ? m.en === recMajor : lower(recMajor).includes(lower(query));
+  }
+  function schoolMatches(recSchool, query) {
+    const q = lower(query);
+    const n = lower(recSchool);
+    if (!q) return false;
+    if (n.includes(q) || q.includes(n)) return true;
+    return (DATA.schoolAliases[recSchool] || []).some((a) => q.includes(lower(a)) || lower(a).includes(q));
+  }
+
+  /* ---------- Research ---------- */
+  const mock = {
+    async research(payload) {
+      await delay(700);
+      const school = lower(payload.school);
+      const major = (payload.major || "").trim();
+      const state = lower(payload.state);
+      const hits = DATA.schools.filter(
+        (r) =>
+          (!school || schoolMatches(r.school, school)) &&
+          (!major || majorMatch(r.major, major)) &&
+          (!state || lower(r.state) === state)
+      );
+      if (hits.length) return { records: hits.map(clone) };
+      // 查不到：返回一条全空记录，绝不编造
+      return {
+        records: [
+          Object.assign(DATA.blankRecord(), {
+            school: payload.school || "（未指定学校）",
+            major: payload.major || "（未指定专业）",
+            state: payload.state || "",
+            degree: payload.degree || "本科",
+            term: payload.term || "",
+            notFound: true,
+            confidence: "无",
+          }),
+        ],
+      };
+    },
+
+    /* ---------- Content ---------- */
+    async content(researchId, platform) {
+      await delay(900);
+      const rec = App.Store.get("research", []).find((x) => x.id === researchId);
+      if (!rec) throw new Error("找不到该 Research 记录");
+      const build = TEMPLATES[platform];
+      if (!build) throw new Error("不支持的平台：" + platform);
+      return {
+        researchId,
+        platform,
+        generatedAt: new Date().toISOString(),
+        sourceNote: has(rec.source)
+          ? "来源：" + rec.source + "（最后更新 " + (rec.updatedAt || "未知") + "）"
+          : "来源：未找到",
+        data: build(rec),
+      };
+    },
+
+    /* ---------- Support ---------- */
+    async support(messages, profile) {
+      await delay(800);
+      const last = [...messages].reverse().find((m) => m.role === "user");
+      const text = last ? last.content : "";
+      const updates = extractProfile(text, profile || {});
+      const p = Object.assign({}, profile, updates);
+      const missing = PROFILE_FIELDS.filter((f) => !has(p[f.key])).map((f) => f.label);
+      const complete = missing.length === 0;
+      const meta = buildMeta(text, p);
+
+      if (!complete) {
+        const temp = buildTempAdvice(p);
+        const ask = missing.slice(0, 3).join("、");
+        return {
+          reply:
+            "目前信息还不完整，下面只是临时建议，不是最终选校。请先补充：" +
+            ask + (missing.length > 3 ? " 等" : "") + "。",
+          profileUpdates: updates,
+          missing,
+          complete: false,
+          recommendations: null,
+          tempAdvice: temp,
+          meta: Object.assign(meta, { unresolved: true }),
+        };
+      }
+
+      const { groups, unclassified } = classify(p);
+      const total = groups.safety.length + groups.match.length + groups.reach.length;
+      let reply = total
+        ? "根据你提供的信息，我按保底 / 匹配 / 冲刺做了分类（基于示例数据，仅供参考，请以官网为准）。"
+        : "没有找到与你的专业相关的学校记录（未找到）。请先到 Research 页面研究目标学校。";
+      if (unclassified.length) reply += " 以下学校缺少建议 GPA，无法归类：" + unclassified.join("、") + "。";
+      return {
+        reply,
+        profileUpdates: updates,
+        missing: [],
+        complete: true,
+        recommendations: groups,
+        tempAdvice: [],
+        meta: Object.assign(meta, { unresolved: total === 0 }),
+      };
+    },
+
+    /* ---------- Analytics ---------- */
+    async analytics() {
+      await delay(500);
+      const events = App.Store.get("events", []);
+
+      // 1) 问题主题计数 = 种子 + 本地事件（事件里只有主题标签，没有学生原话）
+      const topics = DATA.topics.map((t) => ({ key: t.key, topic: t.name, suggestion: t.suggestion, count: t.seedCount }));
+      events.forEach((ev) =>
+        (ev.topics || []).forEach((k) => {
+          const t = topics.find((x) => x.key === k);
+          if (t) t.count++;
+        })
+      );
+      const totalQ = topics.reduce((s, t) => s + t.count, 0) || 1;
+      const topQuestions = topics
+        .map((t) => ({ topic: t.topic, count: t.count, share: t.count / totalQ, suggestion: t.suggestion }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+
+      // 2) 最近 7 天趋势
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        days.push(d);
+      }
+      const ymd = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+      const trend = days.map((d, i) => ({
+        label: String(d.getMonth() + 1) + "/" + d.getDate(),
+        count: DATA.trendSeed[i] + events.filter((e) => ymd(new Date(e.ts)) === ymd(d)).length,
+      }));
+
+      // 3) 热门学校 / 专业
+      const schoolMap = {};
+      DATA.schoolSeed.forEach((s) => (schoolMap[s.name] = s.count));
+      events.forEach((e) => (e.schools || []).forEach((n) => (schoolMap[n] = (schoolMap[n] || 0) + 1)));
+      const topSchools = Object.entries(schoolMap).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+
+      const majorMap = {};
+      DATA.majorSeed.forEach((m) => (majorMap[m.key] = m.count));
+      events.forEach((e) => e.major && (majorMap[e.major] = (majorMap[e.major] || 0) + 1));
+      const topMajors = Object.entries(majorMap)
+        .map(([key, count]) => ({ name: (DATA.majors.find((m) => m.key === key) || { zh: key }).zh, count }))
+        .sort((a, b) => b.count - a.count);
+
+      // 4) 下周内容建议：取最高频的 3 个主题
+      const nextWeekContent = topQuestions.slice(0, 3).map((t, i) => ({
+        title: t.topic,
+        platform: ["TikTok", "Blog", "FAQ"][i],
+        reason: "本周被问 " + t.count + " 次，占 " + (t.share * 100).toFixed(1) + "%。" + t.suggestion,
+      }));
+
+      // 5) 需要更新的 Research：过期 / 缺字段 / 无来源
+      const KEYS = ["gpaMin", "gpaRec", "prereqs", "requirements", "credits", "deadline", "intl", "english"];
+      const pool = App.Store.get("research", []).length ? App.Store.get("research", []) : DATA.schools;
+      const needsUpdate = [];
+      pool.forEach((r) => {
+        const reasons = [];
+        const age = r.updatedAt ? (Date.now() - new Date(r.updatedAt).getTime()) / 864e5 : null;
+        if (age === null) reasons.push("没有更新时间");
+        else if (age > 90) reasons.push("已超过 90 天未更新");
+        if (!has(r.source)) reasons.push("没有来源");
+        const miss = KEYS.filter((k) => !has(r[k])).length;
+        if (miss >= 4) reasons.push("有 " + miss + " 项关键信息未找到");
+        if (reasons.length) needsUpdate.push({ school: r.school, major: r.major, reason: reasons.join("；") });
+      });
+
+      const convIds = new Set(events.map((e) => e.convId));
+      const unresolved = DATA.seedUnresolved + events.filter((e) => e.unresolved).length;
+      return {
+        mockNote: "示例数据 + 本机聊天事件汇总",
+        cards: {
+          totalConversations: DATA.seedConversations + convIds.size,
+          highFreqCount: topics.filter((t) => t.count >= 20).length,
+          unresolved,
+          topSchool: topSchools[0] || null,
+        },
+        topQuestions,
+        trend,
+        topMajors: topMajors.slice(0, 6),
+        topSchools: topSchools.slice(0, 6),
+        nextWeekContent,
+        needsUpdate: needsUpdate.slice(0, 8),
+      };
+    },
+  };
+
+  /* ---------- Content 模板（只使用 Research 记录里的信息） ---------- */
+  function videoBase(r, hook, cta, extra) {
+    const name = r.school + " " + r.major;
+    const body = [
+      "最低 GPA：" + txt(r.gpaMin) + "；建议 GPA：" + txt(r.gpaRec),
+      "先修课：" + txt(r.prereqs),
+      "学分要求：" + txt(r.credits) + "；转学要求：" + txt(r.requirements),
+      "截止日期：" + txt(r.deadline),
+      "国际生：" + txt(r.intl) + "；英语：" + txt(r.english),
+    ];
+    return Object.assign(
+      {
+        hook,
+        body,
+        cta,
+        captions: [
+          name + " 转学要点",
+          "GPA：" + sh(r.gpaMin) + " / " + sh(r.gpaRec),
+          "先修课：" + sh(r.prereqs),
+          "截止：" + sh(r.deadline),
+          "国际生与英语：以官网为准",
+        ],
+        hashtags: ["#转学", "#transfer", "#" + r.school.replace(/\s+/g, ""), "#" + r.major.replace(/\s+/g, ""), "#留学", "#college"],
+      },
+      extra || {}
+    );
+  }
+  const ans = (v) => (has(v) ? txt(v) + "。" : "Research 数据中未找到，请以学校官网为准。");
+
+  const TEMPLATES = {
+    tiktok: (r) =>
+      videoBase(r, "想转学到 " + r.school + " 读 " + r.major + "？先看这几条要求。", "想看完整清单？点主页链接查看官方来源，申请前请以官网为准。"),
+    reel: (r) =>
+      videoBase(r, r.school + " " + r.major + " 转学要求，先保存再申请。", "保存并转发给也在规划转学的朋友；政策以官网为准。"),
+    shorts: (r) =>
+      videoBase(r, r.school + " " + r.major + " 转学：5 个关键信息。", "订阅获取更多转学更新；细节以学校官网为准。", {
+        title: r.school + " " + r.major + " 转学要求速览",
+      }),
+    blog: (r) => ({
+      seoTitle: r.school + " " + r.major + " 转学要求：GPA、先修课与截止日期",
+      meta: "整理 " + r.school + " " + r.major + " 转学的 GPA、先修课、学分与截止日期，并附官方来源与更新时间。申请前请以官网为准。",
+      outline: [
+        { h2: "转学要求概览", h3: ["GPA 要求", "学分要求", "其他转学要求"], notes: "GPA：" + txt(r.gpaMin) + " / " + txt(r.gpaRec) + "；学分：" + txt(r.credits) },
+        { h2: "先修课清单", h3: ["必修先修课", "如何核对自己的课程"], notes: txt(r.prereqs) },
+        { h2: "申请时间线", h3: ["截止日期", "材料准备顺序"], notes: txt(r.deadline) },
+        { h2: "国际生与英语要求", h3: ["国际生额外材料", "英语成绩"], notes: "国际生：" + txt(r.intl) + "；英语：" + txt(r.english) },
+        { h2: "信息来源与更新时间", h3: ["官方来源", "如何自己核实"], notes: has(r.source) ? r.source + "（" + (r.updatedAt || "更新时间未知") + "）" : "来源未找到" },
+      ],
+      faq: [
+        { q: "最低 GPA 是多少？", a: ans(r.gpaMin) },
+        { q: "需要哪些先修课？", a: ans(r.prereqs) },
+        { q: "截止日期是什么时候？", a: ans(r.deadline) },
+      ],
+    }),
+    faq: (r) => ({
+      items: [
+        { q: "转学到 " + r.school + " " + r.major + " 的最低 GPA 是多少？", a: ans(r.gpaMin) },
+        { q: "建议 GPA 是多少？", a: ans(r.gpaRec) },
+        { q: "需要提前修哪些先修课？", a: ans(r.prereqs) },
+        { q: "申请截止日期是什么时候？", a: ans(r.deadline) },
+        { q: "国际生和英语成绩有什么要求？", a: "国际生：" + ans(r.intl) + " 英语：" + ans(r.english) },
+      ],
+    }),
+  };
+
+  /* ---------- Support 辅助：抽取资料 / 分类 ---------- */
+  const PROFILE_FIELDS = [
+    { key: "term", label: "学制" },
+    { key: "credits", label: "累计学分" },
+    { key: "major", label: "专业" },
+    { key: "gpa", label: "GPA" },
+    { key: "courses", label: "已完成课程" },
+    { key: "season", label: "目标入学季" },
+    { key: "intl", label: "是否国际生" },
+    { key: "targets", label: "目标学校" },
+  ];
+
+  function extractProfile(t, cur) {
+    const u = {};
+    let m;
+    if ((m = t.match(/(\d{1,3})\s*(?:个)?\s*(?:credits?|学分|units?)/i))) u.credits = Number(m[1]);
+    if ((m = t.match(/gpa\s*[:：]?\s*([0-4](?:\.\d{1,2})?)/i) || t.match(/([0-4]\.\d{1,2})\s*(?:的)?\s*gpa/i))) u.gpa = Number(m[1]);
+    if (/(不是|非)\s*国际生|本地生|公民|绿卡/.test(t)) u.intl = "否";
+    else if (/国际生|international/i.test(t)) u.intl = "是";
+    if ((m = t.match(/(20\d\d)\s*年?\s*(秋|春|fall|spring)\w*|(fall|spring|秋季|春季)\s*(20\d\d)?/i))) u.season = m[0].trim();
+    const major = findMajor(t);
+    if (major) u.major = major.zh;
+    const found = Object.keys(DATA.schoolAliases).filter((n) => mentions(t, n));
+    if (found.length) {
+      const old = has(cur.targets) ? String(cur.targets).split("、") : [];
+      u.targets = Array.from(new Set([...old, ...found])).join("、");
+    }
+    if ((m = t.match(/(?:已修|修过|已完成|学过)\s*[:：]?\s*([^。！？\n]{2,60})/))) u.courses = m[1].trim();
+    if (/社区学院|community college|\bCC\b/i.test(t)) u.term = "两年制社区学院转四年制";
+    else if (/四年制转|大学转学|四年制大学/.test(t)) u.term = "四年制转四年制";
+    return u;
+  }
+  // 文本里是否真的提到该学校（避免 schoolMatches 的“包含”逻辑误判）
+  function mentions(text, name) {
+    const t = lower(text);
+    return t.includes(lower(name)) || (DATA.schoolAliases[name] || []).some((a) => t.includes(lower(a)));
+  }
+
+  function buildMeta(text, p) {
+    const topics = DATA.topics.filter((t) => new RegExp(t.kw.join("|"), "i").test(text)).map((t) => t.key);
+    const schools = Object.keys(DATA.schoolAliases).filter((n) => mentions(text, n) || (has(p.targets) && mentions(p.targets, n)));
+    const major = (findMajor(p.major) || {}).key || null;
+    return { topics, schools, major };
+  }
+
+  function candidates(p) {
+    const list = DATA.schools.filter((r) => !has(p.major) || majorMatch(r.major, p.major));
+    const targeted = (r) => has(p.targets) && mentions(p.targets, r.school);
+    return list.sort((a, b) => Number(targeted(b)) - Number(targeted(a))).slice(0, 8);
+  }
+
+  function buildTempAdvice(p) {
+    const out = [];
+    const cands = candidates(p);
+    const first = cands[0];
+    if (has(p.credits)) {
+      out.push({
+        text: "你目前约 " + p.credits + " 学分。不同学校对转学生的学分门槛和可转学分上限不同，请先到目标学校官网确认。",
+        source: first ? first.source : null,
+        updatedAt: first ? first.updatedAt : null,
+      });
+    }
+    if (!has(p.gpa)) out.push({ text: "GPA 是判断保底 / 匹配 / 冲刺的关键，补充后我才能分类。", source: null, updatedAt: null });
+    cands.slice(0, 3).forEach((r) =>
+      out.push({
+        text: "可以先了解 " + r.school + " " + r.major + "（建议 GPA：" + sh(r.gpaRec) + "，截止：" + sh(r.deadline) + "）。",
+        source: r.source,
+        updatedAt: r.updatedAt,
+      })
+    );
+    return out;
+  }
+
+  function classify(p) {
+    const groups = { safety: [], match: [], reach: [] };
+    const unclassified = [];
+    candidates(p).forEach((r) => {
+      if (!has(r.gpaRec)) return unclassified.push(r.school + " " + r.major);
+      const gap = Number(p.gpa) - r.gpaRec;
+      const bucket = gap >= 0.2 ? "safety" : gap >= -0.1 ? "match" : "reach";
+      const prereq = has(r.prereqs) ? "对照先修课（" + r.prereqs.join("、") + "）核对已修课程" : "先修课未找到，请先到官网确认";
+      const dl = has(r.deadline) ? "，截止日期 " + r.deadline : "，截止日期未找到，请以官网为准";
+      const intl = p.intl === "是" ? "；国际生：" + (r.intl || "未找到") + "；英语：" + (r.english || "未找到") : "";
+      groups[bucket].push({
+        school: r.school,
+        major: r.major,
+        reason: "你的 GPA " + p.gpa + "，该校建议 GPA " + r.gpaRec + "（差 " + (gap >= 0 ? "+" : "") + gap.toFixed(2) + "）",
+        nextStep: prereq + dl + intl,
+        source: r.source,
+        updatedAt: r.updatedAt,
+      });
+    });
+    return { groups, unclassified };
+  }
+
+  /* ====================================================================
+     对外接口：页面只调用这 4 个函数
+     ==================================================================== */
+  return {
+    CONFIG,
+
+    /** @param {{school,major,state,degree,term}} payload */
+    research(payload) {
+      return CONFIG.USE_MOCK ? mock.research(payload) : http("POST", "/api/research", payload);
+    },
+
+    /** @param {string} researchId @param {"tiktok"|"reel"|"shorts"|"blog"|"faq"} platform */
+    content(researchId, platform) {
+      if (CONFIG.USE_MOCK) return mock.content(researchId, platform);
+      // 后端读不到浏览器 localStorage，所以把记录快照一起发过去
+      const research = App.Store.get("research", []).find((r) => r.id === researchId);
+      return http("POST", "/api/content", { researchId, platform, research });
+    },
+
+    /** @param {{role,content}[]} messages @param {object} profile */
+    support(messages, profile) {
+      return CONFIG.USE_MOCK ? mock.support(messages, profile) : http("POST", "/api/support", { messages, profile });
+    },
+
+    analytics() {
+      return CONFIG.USE_MOCK ? mock.analytics() : http("GET", "/api/analytics");
+    },
+  };
+})();
+
+</script>
+<!-- ③ 共享交互：导航、状态、localStorage、导出工具 -->
+<script>
+/* ==========================================================================
+   app.js — 共享交互：导航、员工档案条、免责声明、localStorage、通用工具
+   页面里调用 App.init("research") 即可（"home" 用于主页）。
+   ========================================================================== */
+const App = (() => {
+  "use strict";
+
+  const PREFIX = "ta_";
+
+  /* ---------- localStorage 封装（所有 key 统一加前缀） ---------- */
+  const Store = {
+    get(key, fallback = null) {
+      try {
+        const v = localStorage.getItem(PREFIX + key);
+        return v === null ? fallback : JSON.parse(v);
+      } catch (e) {
+        return fallback;
+      }
+    },
+    set(key, value) {
+      try {
+        localStorage.setItem(PREFIX + key, JSON.stringify(value));
+        return true;
+      } catch (e) {
+        toast("浏览器存储不可用或已满，数据没有保存", "error");
+        return false;
+      }
+    },
+    remove(key) {
+      try {
+        localStorage.removeItem(PREFIX + key);
+      } catch (e) {}
+    },
+  };
+
+  /* ---------- 通用工具 ---------- */
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+  const esc = (s) =>
+    String(s === null || s === undefined ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const today = () => new Date().toISOString().slice(0, 10);
+  const isMissing = (v) => v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0);
+
+  // 只允许 http(s) 链接，避免 javascript: 之类的 URL
+  function safeUrl(u) {
+    try {
+      const x = new URL(u);
+      return x.protocol === "http:" || x.protocol === "https:" ? x.href : "";
+    } catch (e) {
+      return "";
+    }
+  }
+  const host = (u) => {
+    try {
+      return new URL(u).hostname.replace(/^www\./, "");
+    } catch (e) {
+      return u;
+    }
+  };
+
+  // 超过 90 天视为可能过期
+  const isStale = (iso) => !!iso && (Date.now() - new Date(iso).getTime()) / 864e5 > 90;
+
+  function download(filename, text, mime) {
+    const blob = new Blob([text], { type: mime + ";charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  // rows: 对象数组；columns: [{label, get(row)}]。加 BOM 让 Excel 正确显示中文
+  function toCSV(rows, columns) {
+    const cell = (v) => '"' + String(v === null || v === undefined ? "" : v).replace(/"/g, '""') + '"';
+    const lines = [columns.map((c) => cell(c.label)).join(",")];
+    rows.forEach((r) => lines.push(columns.map((c) => cell(c.get(r))).join(",")));
+    return "\ufeff" + lines.join("\r\n");
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand("copy");
+      } catch (err) {
+        toast("复制失败，请手动选择文本", "error");
+        ta.remove();
+        return false;
+      }
+      ta.remove();
+    }
+    toast("已复制");
+    return true;
+  }
+
+  let toastTimer;
+  function toast(msg, type) {
+    let el = $("#toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "toast";
+      el.setAttribute("role", "status");
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.className = "toast show" + (type === "error" ? " toast-error" : "");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (el.className = "toast"), 2600);
+  }
+
+  /* ---------- 页面骨架（单页：hash 路由，每位员工一个分页） ---------- */
+  const NAV = [
+    { id: "home", label: "总览" },
+    { id: "research", label: "Research" },
+    { id: "content", label: "Content" },
+    { id: "support", label: "Support" },
+    { id: "analytics", label: "Analytics" },
+  ];
+  const STATUS = { idle: "空闲", working: "工作中", review: "待审核" };
+  const statuses = {}; // 每位员工各自的状态
+  const hooks = {}; // 切到某分页时要执行的函数
+  let current = "home";
+
+  function renderHeader() {
+    const host = $("#site-header");
+    const links = NAV.map((n) => '<a href="#' + n.id + '" data-page="' + n.id + '">' + n.label + "</a>").join("");
+    const mock = API.CONFIG.USE_MOCK
+      ? '<div class="mock-banner">当前是 Mock 演示模式：所有 AI 结果和院校数据都是示例，不是真实招生信息。</div>'
+      : "";
+    host.innerHTML =
+      '<header class="topbar"><div class="topbar-inner">' +
+      '<a class="brand" href="#home">AI 转学助手团队</a>' +
+      '<button class="nav-toggle" type="button" aria-label="打开菜单" aria-expanded="false" aria-controls="nav">菜单</button>' +
+      '<nav class="nav" id="nav" aria-label="主导航">' + links + "</nav>" +
+      "</div></header>" + mock;
+    $(".nav-toggle", host).addEventListener("click", () => {
+      const open = $("#nav").classList.toggle("open");
+      $(".nav-toggle").setAttribute("aria-expanded", String(open));
+    });
+  }
+
+  function renderAgentBar(emp) {
+    const st = statuses[emp.id] || "idle";
+    $("#agent-bar").innerHTML =
+      '<section class="agent-bar">' +
+      '<div class="avatar" style="background:' + emp.color + '" aria-hidden="true">' + esc(emp.avatar) + "</div>" +
+      '<div class="agent-meta"><div class="agent-no">' + esc(emp.no) + "</div>" +
+      "<h1>" + esc(emp.title) + "</h1>" +
+      '<p class="muted">' + esc(emp.duty) + "</p></div>" +
+      '<span class="status status-' + st + '" id="agent-status"><i></i><span>' + STATUS[st] + "</span></span>" +
+      "</section>";
+  }
+
+  // page 省略时表示当前分页；请求进行中用户切走了分页，状态也能记对
+  function setStatus(state, page) {
+    page = page || current;
+    statuses[page] = state;
+    if (page !== current) return;
+    const el = $("#agent-status");
+    if (!el) return;
+    el.className = "status status-" + state;
+    $("span", el).textContent = STATUS[state] || STATUS.idle;
+  }
+
+  function show(page) {
+    if (!NAV.some((n) => n.id === page)) page = "home";
+    current = page;
+    $$(".panel").forEach((p) => (p.hidden = p.id !== "panel-" + page));
+    $$("#nav a").forEach((a) => {
+      const on = a.dataset.page === page;
+      a.classList.toggle("active", on);
+      if (on) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    });
+    const emp = DATA.employees.find((e) => e.id === page);
+    if (emp) renderAgentBar(emp);
+    else $("#agent-bar").innerHTML = "";
+    $("#nav").classList.remove("open");
+    $(".nav-toggle").setAttribute("aria-expanded", "false");
+    document.title = (emp ? emp.title : "总览") + " - AI 转学助手团队";
+    window.scrollTo(0, 0);
+    (hooks[page] || []).forEach((fn) => fn());
+  }
+
+  function on(page, fn) {
+    (hooks[page] = hooks[page] || []).push(fn);
+  }
+
+  function renderFooter() {
+    $("#site-footer").innerHTML =
+      '<div class="disclaimer container"><strong>免责声明：</strong>本站内容不是法律或移民建议。招生政策、截止日期和录取要求随时可能变化，请以学校官网为准。</div>';
+  }
+
+  // 各分页脚本先用 App.on 注册，最后调用 init()
+  function init() {
+    renderHeader();
+    renderFooter();
+    const route = () => show(location.hash.slice(1) || "home");
+    window.addEventListener("hashchange", route);
+    route();
+  }
+
+  /* ---------- 事件追踪（只记录主题标签，不记录学生原话） ---------- */
+  function track(evt) {
+    const events = Store.get("events", []);
+    events.push(evt);
+    Store.set("events", events.slice(-500));
+  }
+
+  return { Store, $, $$, esc, uid, today, isMissing, safeUrl, host, isStale, download, toCSV, copyText, toast, init, setStatus, show, on, track };
+})();
+
+</script>
+<!-- ④ 分页逻辑：总览 + 四位员工 -->
+<script>
+/* ==========================================================================
+   panels.js — 总览 + 四位员工分页的页面逻辑
+   每个分页是一个独立的 IIFE，只通过 API.xxx() 和 App.Store 通信，
+   后续换真实 API 时不需要改这里。
+   ========================================================================== */
+(function () {
+  "use strict";
+  const { $, esc, uid, today, isMissing, safeUrl, host, isStale, download, toCSV, copyText, toast, Store } = App;
+
+  const sourceLink = (url, date) => {
+    const u = safeUrl(url);
+    const link = u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + esc(host(u)) + "</a>" : '<span class="nf">未找到</span>';
+    return "来源：" + link + "，最后更新 " + (date ? esc(date) : '<span class="nf">未找到</span>');
+  };
+
+  /* ======================================================================
+     总览
+     ====================================================================== */
+  App.on("home", () => {
+    $("#home-cards").innerHTML = DATA.employees
+      .map(
+        (e) =>
+          '<a class="team-card" href="#' + e.id + '"><div class="top">' +
+          '<div class="avatar" style="background:' + e.color + '" aria-hidden="true">' + esc(e.avatar) + "</div>" +
+          "<div><div class=\"agent-no\">" + esc(e.no) + "</div><h3>" + esc(e.name) + "</h3></div></div>" +
+          "<p>" + esc(e.duty) + "</p>" +
+          '<div class="foot"><span class="status status-idle"><i></i><span>空闲</span></span><span>进入</span></div></a>'
+      )
+      .join("");
+  });
+
+  /* ======================================================================
+     AI #1 Research
+     ====================================================================== */
+  (function research() {
+    const KEY = "research";
+    let records = Store.get(KEY, []);
+    const st = (s) => App.setStatus(s, "research");
+    const save = () => Store.set(KEY, records);
+
+    "AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC"
+      .split(" ")
+      .forEach((s) => ($("#r-states").innerHTML += '<option value="' + s + '">'));
+
+    const COLS = [
+      { key: "school", label: "学校" },
+      { key: "major", label: "专业" },
+      { key: "gpaMin", label: "GPA最低", src: true },
+      { key: "gpaRec", label: "GPA建议", src: true },
+      { key: "prereqs", label: "先修课", src: true },
+      { key: "requirements", label: "转学要求", src: true },
+      { key: "credits", label: "学分要求", src: true },
+      { key: "deadline", label: "截止日期", src: true },
+      { key: "intl", label: "国际生要求", src: true },
+      { key: "english", label: "英语要求", src: true },
+      { key: "source", label: "来源" },
+      { key: "updatedAt", label: "最后更新" },
+      { key: "confidence", label: "置信度" },
+    ];
+    $("#r-thead").innerHTML = "<tr>" + COLS.map((c) => "<th>" + c.label + "</th>").join("") + "<th>操作</th></tr>";
+
+    const NF = '<span class="nf">未找到</span>';
+    const CONF = { 高: "badge-ok", 中: "", 低: "badge-warn", 无: "badge-bad" };
+
+    function cellHtml(r, c) {
+      const v = r[c.key];
+      if (c.key === "school")
+        return esc(r.school) + (r.mock ? ' <span class="badge badge-mock">示例</span>' : "") + (r.term ? '<div class="muted">' + esc(r.term) + "</div>" : "");
+      if (c.key === "source") {
+        const u = safeUrl(v);
+        return u ? '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + esc(host(u)) + "</a>" : NF + ' <span class="badge badge-warn">无来源</span>';
+      }
+      if (c.key === "updatedAt")
+        return isMissing(v) ? NF : '<span class="nowrap' + (isStale(v) ? " stale" : "") + '">' + esc(v) + "</span>" + (isStale(v) ? ' <span class="badge badge-warn">可能已过期</span>' : "");
+      if (c.key === "confidence") return '<span class="badge ' + (CONF[v] || "") + '">' + esc(v || "未知") + "</span>";
+      if (isMissing(v)) return NF;
+      const text = Array.isArray(v) ? v.map(esc).join("<br>") : esc(v);
+      const u = c.src ? safeUrl((r.fieldSources && r.fieldSources[c.key]) || r.source) : "";
+      return text + (u ? ' <a class="src" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer" title="来源：' + esc(host(u)) + '">来源↗</a>' : "");
+    }
+
+    function render() {
+      $("#r-tbody").innerHTML = records.length
+        ? records
+            .map(
+              (r) =>
+                "<tr>" + COLS.map((c) => "<td>" + cellHtml(r, c) + "</td>").join("") +
+                '<td><div class="row-actions">' +
+                '<button class="btn btn-sm" data-act="edit" data-id="' + r.id + '" type="button">编辑</button>' +
+                '<button class="btn btn-sm" data-act="copy" data-id="' + r.id + '" type="button">复制</button>' +
+                '<button class="btn btn-sm btn-danger" data-act="del" data-id="' + r.id + '" type="button">删除</button>' +
+                "</div></td></tr>"
+            )
+            .join("")
+        : '<tr><td colspan="' + (COLS.length + 1) + '" class="empty">还没有研究结果。输入学校和专业，点“开始研究”。</td></tr>';
+      $("#r-count").textContent = records.length ? "共 " + records.length + " 条。“未找到”表示没有查到，不是 0 或没有要求。" : "";
+    }
+
+    /* ---------- 开始研究 ---------- */
+    const keyOf = (r) => [r.school, r.major, r.term].map((x) => String(x || "").toLowerCase()).join("|");
+    $("#r-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = {
+        school: $("#r-school").value.trim(),
+        major: $("#r-major").value.trim(),
+        state: $("#r-state").value.trim().toUpperCase(),
+        degree: $("#r-degree").value,
+        term: $("#r-term").value,
+      };
+      if (!payload.school && !payload.major) return toast("请至少填写学校或专业", "error");
+      const btn = $("#r-run");
+      btn.disabled = true;
+      btn.textContent = "研究中…";
+      st("working");
+      try {
+        const res = await API.research(payload);
+        let added = 0, skipped = 0, notFound = 0;
+        (res.records || []).forEach((r) => {
+          if (r.notFound) notFound++;
+          const rec = Object.assign({}, r, { id: uid(), fetchedAt: new Date().toISOString() });
+          const i = records.findIndex((x) => keyOf(x) === keyOf(rec));
+          if (i >= 0) {
+            if (records[i].manual) return skipped++; // 不覆盖用户手动改过的记录
+            records[i] = rec;
+          } else records.unshift(rec);
+          added++;
+        });
+        save();
+        render();
+        toast(notFound ? "没有找到这所学校/专业的资料，已记录为“未找到”" : "完成：更新 " + added + " 条" + (skipped ? "，跳过 " + skipped + " 条手动记录" : ""));
+        st("review");
+      } catch (err) {
+        toast("研究失败：" + err.message, "error");
+        st("idle");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "开始研究";
+      }
+    });
+
+    /* ---------- 新增 / 编辑 ---------- */
+    const EF = [
+      { k: "school", l: "学校" },
+      { k: "major", l: "专业" },
+      { k: "state", l: "州" },
+      { k: "degree", l: "学位类型", sel: ["本科", "副学士", "硕士"] },
+      { k: "term", l: "学制", sel: ["两年制社区学院转四年制", "四年制转四年制"] },
+      { k: "gpaMin", l: "GPA最低", t: "gpa" },
+      { k: "gpaRec", l: "GPA建议", t: "gpa" },
+      { k: "prereqs", l: "先修课（逗号或换行分隔）", t: "list", wide: true },
+      { k: "requirements", l: "转学要求", wide: true },
+      { k: "credits", l: "学分要求" },
+      { k: "deadline", l: "截止日期" },
+      { k: "intl", l: "国际生要求", wide: true },
+      { k: "english", l: "英语要求", wide: true },
+      { k: "source", l: "来源链接（http / https）", t: "url", wide: true },
+      { k: "confidence", l: "置信度", sel: ["高", "中", "低", "无"] },
+    ];
+    $("#r-edit-fields").innerHTML = EF.map((f) => {
+      const ctl = f.sel
+        ? '<select id="e-' + f.k + '">' + f.sel.map((o) => "<option>" + o + "</option>").join("") + "</select>"
+        : f.t === "gpa"
+        ? '<input id="e-' + f.k + '" type="number" step="0.01" min="0" max="5">'
+        : f.t === "list"
+        ? '<textarea id="e-' + f.k + '" rows="2"></textarea>'
+        : '<input id="e-' + f.k + '"' + (f.t === "url" ? ' type="url" placeholder="https://"' : "") + ">";
+      return '<label class="field' + (f.wide ? " wide" : "") + '">' + f.l + ctl + "</label>";
+    }).join("");
+
+    let editingId = null;
+    function openDialog(rec) {
+      editingId = rec ? rec.id : null;
+      $("#r-dialog-title").textContent = rec ? "编辑记录" : "新增记录";
+      EF.forEach((f) => {
+        const v = rec ? rec[f.k] : null;
+        $("#e-" + f.k).value = Array.isArray(v) ? v.join("\n") : v === null || v === undefined ? (f.sel ? f.sel[f.k === "confidence" ? 2 : 0] : "") : v;
+      });
+      $("#r-dialog").showModal();
+    }
+    function readForm() {
+      const o = {};
+      EF.forEach((f) => {
+        const v = $("#e-" + f.k).value.trim();
+        if (f.t === "gpa") {
+          if (v === "") o[f.k] = null;
+          else {
+            const n = Number(v);
+            if (!(n >= 0 && n <= 5)) throw new Error(f.l + " 需要在 0 到 5 之间");
+            o[f.k] = n;
+          }
+        } else if (f.t === "list") o[f.k] = v.split(/[\n,，、;；]+/).map((x) => x.trim()).filter(Boolean);
+        else if (f.t === "url") {
+          if (v && !safeUrl(v)) throw new Error("来源链接必须以 http:// 或 https:// 开头");
+          o[f.k] = v ? safeUrl(v) : null;
+        } else o[f.k] = v || null;
+      });
+      if (!o.school || !o.major) throw new Error("学校和专业不能为空");
+      return o;
+    }
+    $("#r-edit").addEventListener("submit", (e) => {
+      e.preventDefault();
+      try {
+        const o = readForm();
+        const patch = Object.assign(o, { updatedAt: today(), manual: true, mock: false, notFound: false });
+        const i = records.findIndex((r) => r.id === editingId);
+        if (i >= 0) records[i] = Object.assign({}, records[i], patch);
+        else records.unshift(Object.assign(DATA.blankRecord(), patch, { id: uid() }));
+        save();
+        render();
+        $("#r-dialog").close();
+        st("idle");
+        toast(o.source ? "已保存" : "已保存，但没有来源链接，请补充");
+      } catch (err) {
+        toast(err.message, "error");
+      }
+    });
+    $("#r-cancel").addEventListener("click", () => $("#r-dialog").close());
+    $("#r-add").addEventListener("click", () => openDialog(null));
+
+    /* ---------- 导出 / 复制 ---------- */
+    const val = (r, k) => (isMissing(r[k]) ? "未找到" : Array.isArray(r[k]) ? r[k].join("；") : r[k]);
+    const EXPORT_COLS = [
+      { label: "学校", get: (r) => r.school },
+      { label: "专业", get: (r) => r.major },
+      { label: "州", get: (r) => val(r, "state") },
+      { label: "学位类型", get: (r) => val(r, "degree") },
+      { label: "学制", get: (r) => val(r, "term") },
+      ...COLS.slice(2, 10).map((c) => ({ label: c.label, get: (r) => val(r, c.key) })),
+      { label: "来源", get: (r) => val(r, "source") },
+      { label: "最后更新", get: (r) => val(r, "updatedAt") },
+      { label: "置信度", get: (r) => val(r, "confidence") },
+    ];
+    const needRecords = () => (records.length ? true : (toast("没有可导出的记录", "error"), false));
+    $("#r-json").addEventListener("click", () => needRecords() && download("research-" + today() + ".json", JSON.stringify(records, null, 2), "application/json"));
+    $("#r-csv").addEventListener("click", () => needRecords() && download("research-" + today() + ".csv", toCSV(records, EXPORT_COLS), "text/csv"));
+    $("#r-copy").addEventListener("click", () => {
+      if (!needRecords()) return;
+      const clean = (x) => String(x).replace(/[\t\r\n]+/g, " ");
+      const lines = [EXPORT_COLS.map((c) => c.label).join("\t")];
+      records.forEach((r) => lines.push(EXPORT_COLS.map((c) => clean(c.get(r))).join("\t")));
+      copyText(lines.join("\n"));
+    });
+    $("#r-clear").addEventListener("click", () => {
+      if (!records.length || !confirm("确定清空全部研究记录吗？此操作不能撤销。")) return;
+      records = [];
+      save();
+      render();
+    });
+    $("#r-tbody").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-act]");
+      if (!b) return;
+      const r = records.find((x) => x.id === b.dataset.id);
+      if (!r) return;
+      if (b.dataset.act === "edit") openDialog(r);
+      if (b.dataset.act === "copy") copyText(EXPORT_COLS.map((c) => c.label + "：" + c.get(r)).join("\n"));
+      if (b.dataset.act === "del" && confirm("删除 " + r.school + " " + r.major + " 这条记录？")) {
+        records = records.filter((x) => x.id !== r.id);
+        save();
+        render();
+      }
+    });
+
+    App.on("research", () => {
+      records = Store.get(KEY, []);
+      render();
+    });
+  })();
+
+  /* ======================================================================
+     AI #2 Content
+     ====================================================================== */
+  (function content() {
+    const PLATFORMS = [
+      { id: "tiktok", label: "TikTok 脚本" },
+      { id: "reel", label: "Instagram Reel 脚本" },
+      { id: "shorts", label: "YouTube Shorts 脚本" },
+      { id: "blog", label: "Blog" },
+      { id: "faq", label: "FAQ" },
+    ];
+    const st = (s) => App.setStatus(s, "content");
+    let current = {}; // 当前记录下已生成的内容 { platform: result }
+    let currentId = null;
+    let active = "tiktok";
+
+    const usable = () => Store.get("research", []).filter((r) => !r.notFound);
+    const recById = (id) => usable().find((r) => r.id === id);
+
+    function refreshSelect() {
+      const list = usable();
+      const sel = $("#c-select");
+      const keep = sel.value;
+      sel.innerHTML = list.length
+        ? list.map((r) => '<option value="' + r.id + '">' + esc(r.school + " " + r.major + "（更新 " + (r.updatedAt || "未知") + "）") + "</option>").join("")
+        : '<option value="">暂无记录</option>';
+      if (list.some((r) => r.id === keep)) sel.value = keep;
+      if (sel.value !== currentId) {
+        currentId = sel.value || null;
+        current = {};
+      }
+      $("#c-empty").hidden = list.length > 0;
+      $("#c-gen").disabled = !list.length;
+      renderOutput();
+    }
+
+    // 统一把结果拆成 [{title, lines}]，既用于显示也用于复制
+    function sections(p, d) {
+      if (p === "blog")
+        return [
+          { title: "SEO 标题", lines: [d.seoTitle] },
+          { title: "Meta Description", lines: [d.meta] },
+          { title: "H2 / H3 大纲", lines: d.outline.flatMap((o) => ["H2  " + o.h2, ...o.h3.map((h) => "    H3  " + h), "    要点：" + o.notes]) },
+          { title: "常见问题", lines: d.faq.flatMap((f) => ["Q：" + f.q, "A：" + f.a]) },
+        ];
+      if (p === "faq") return [{ title: "FAQ（5 条）", lines: d.items.flatMap((f, i) => [(i + 1) + ". Q：" + f.q, "   A：" + f.a]) }];
+      const s = [];
+      if (d.title) s.push({ title: "标题", lines: [d.title] });
+      s.push({ title: "0-3 秒钩子", lines: [d.hook] });
+      s.push({ title: "15-30 秒干货", lines: d.body.map((b, i) => (i + 1) + ". " + b) });
+      s.push({ title: "CTA", lines: [d.cta] });
+      s.push({ title: "字幕", lines: d.captions });
+      s.push({ title: "Hashtags", lines: [d.hashtags.join(" ")] });
+      return s;
+    }
+    const toText = (p, res) =>
+      sections(p, res.data).map((s) => "【" + s.title + "】\n" + s.lines.join("\n")).join("\n\n") + "\n\n" + res.sourceNote + "\n提示：内容基于 Research 数据，发布前请核对官网。";
+
+    function renderOutput() {
+      $("#c-tabs").innerHTML = PLATFORMS.map(
+        (p) => '<button class="tab' + (p.id === active ? " active" : "") + '" role="tab" aria-selected="' + (p.id === active) + '" data-id="' + p.id + '" type="button">' + p.label + (current[p.id] ? " ●" : "") + "</button>"
+      ).join("");
+      const res = current[active];
+      const label = PLATFORMS.find((p) => p.id === active).label;
+      if (!res) {
+        $("#c-result").innerHTML = '<p class="empty">还没有生成 ' + esc(label) + "。选择记录和平台后点“点击生成”。</p>";
+        $("#c-actions").innerHTML = "";
+        return;
+      }
+      const rec = recById(res.researchId) || {};
+      $("#c-result").innerHTML =
+        sections(active, res.data).map((s) => '<div class="out-sec"><h3>' + esc(s.title) + "</h3>" + s.lines.map((l) => "<p>" + esc(l) + "</p>").join("") + "</div>").join("") +
+        '<p class="muted">' + sourceLink(rec.source, rec.updatedAt) + "</p>";
+      $("#c-actions").innerHTML = '<button class="btn" id="c-copy" type="button">复制</button><button class="btn btn-primary" id="c-save" type="button">保存到本地</button>';
+    }
+
+    function renderSaved() {
+      const list = Store.get("content_saved", []);
+      $("#c-saved").innerHTML = list.length
+        ? list
+            .map(
+              (it) =>
+                '<details style="margin-bottom:8px"><summary>' + esc(it.label) + "（" + esc(it.platformLabel) + "，保存于 " + esc(it.savedAt.slice(0, 10)) + ")</summary>" +
+                '<pre style="white-space:pre-wrap;font:inherit;margin:8px 0">' + esc(it.text) + "</pre>" +
+                '<div class="row-actions"><button class="btn btn-sm" data-act="copy" data-id="' + it.id + '" type="button">复制</button>' +
+                '<button class="btn btn-sm btn-danger" data-act="del" data-id="' + it.id + '" type="button">删除</button></div></details>'
+            )
+            .join("")
+        : '<p class="empty">还没有保存的内容。</p>';
+    }
+
+    $("#c-select").addEventListener("change", () => {
+      currentId = $("#c-select").value || null;
+      current = {};
+      renderOutput();
+    });
+    $("#c-platform").addEventListener("change", () => {
+      active = $("#c-platform").value;
+      renderOutput();
+    });
+    $("#c-tabs").addEventListener("click", (e) => {
+      const b = e.target.closest(".tab");
+      if (!b) return;
+      active = b.dataset.id;
+      $("#c-platform").value = active;
+      renderOutput();
+    });
+    $("#c-gen").addEventListener("click", async () => {
+      const id = $("#c-select").value;
+      const platform = $("#c-platform").value;
+      if (!id) return toast("请先选择一条 Research 记录", "error");
+      const btn = $("#c-gen");
+      btn.disabled = true;
+      btn.textContent = "生成中…";
+      st("working");
+      try {
+        const res = await API.content(id, platform);
+        current[platform] = res;
+        active = platform;
+        renderOutput();
+        st("review");
+      } catch (err) {
+        toast("生成失败：" + err.message, "error");
+        st("idle");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "点击生成";
+      }
+    });
+    $("#c-actions").addEventListener("click", (e) => {
+      const res = current[active];
+      if (!res) return;
+      if (e.target.id === "c-copy") copyText(toText(active, res));
+      if (e.target.id === "c-save") {
+        const rec = recById(res.researchId) || {};
+        const list = Store.get("content_saved", []);
+        list.unshift({
+          id: uid(),
+          researchId: res.researchId,
+          label: (rec.school || "") + " " + (rec.major || ""),
+          platform: active,
+          platformLabel: PLATFORMS.find((p) => p.id === active).label,
+          text: toText(active, res),
+          savedAt: new Date().toISOString(),
+        });
+        if (Store.set("content_saved", list.slice(0, 50))) {
+          toast("已保存到本地");
+          renderSaved();
+          st("idle");
+        }
+      }
+    });
+    $("#c-saved").addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-act]");
+      if (!b) return;
+      const list = Store.get("content_saved", []);
+      const it = list.find((x) => x.id === b.dataset.id);
+      if (!it) return;
+      if (b.dataset.act === "copy") copyText(it.text);
+      if (b.dataset.act === "del") {
+        Store.set("content_saved", list.filter((x) => x.id !== it.id));
+        renderSaved();
+      }
+    });
+    App.on("content", () => {
+      refreshSelect();
+      renderSaved();
+    });
+  })();
+
+  /* ======================================================================
+     AI #3 Support
+     ====================================================================== */
+  (function support() {
+    const st = (s) => App.setStatus(s, "support");
+    const INITIAL = "为了给你准确建议，我需要确认你的学制、累计学分、专业、GPA、已完成课程、目标入学季、是否国际生、目标学校。";
+    const QUICK = [
+      "我现在22 credits，应该申请什么？",
+      "我是国际生，需要准备英语成绩吗？",
+      "我 GPA 3.6，计算机专业能申请哪些学校？",
+      "转学截止日期是什么时候？",
+    ];
+    const FIELDS = [
+      { k: "term", l: "学制", sel: ["", "两年制社区学院转四年制", "四年制转四年制"] },
+      { k: "credits", l: "累计学分", t: "number" },
+      { k: "major", l: "专业" },
+      { k: "gpa", l: "GPA", t: "number", step: "0.01" },
+      { k: "courses", l: "已完成课程", area: true },
+      { k: "season", l: "目标入学季", ph: "如 2027 年秋季" },
+      { k: "intl", l: "是否国际生", sel: ["", "是", "否"] },
+      { k: "targets", l: "目标学校", ph: "多个学校用顿号分隔" },
+    ];
+    const newChat = () => ({ convId: uid(), messages: [{ role: "assistant", content: INITIAL, ts: Date.now() }], profile: {} });
+    let chat = Store.get("support_chat", null) || newChat();
+    let busy = false;
+    const persist = () => Store.set("support_chat", chat);
+    const filled = (v) => v !== undefined && v !== null && v !== "";
+
+    /* ---------- 右侧资料表单 ---------- */
+    $("#s-profile").innerHTML = FIELDS.map((f) => {
+      const ctl = f.sel
+        ? '<select id="sp-' + f.k + '">' + f.sel.map((o) => '<option value="' + o + '">' + (o || "未填写") + "</option>").join("") + "</select>"
+        : f.area
+        ? '<textarea id="sp-' + f.k + '" rows="2"></textarea>'
+        : '<input id="sp-' + f.k + '"' + (f.t ? ' type="' + f.t + '"' : "") + (f.step ? ' step="' + f.step + '" min="0" max="4.5"' : f.t ? ' min="0"' : "") + (f.ph ? ' placeholder="' + f.ph + '"' : "") + ">";
+      return '<label class="field">' + f.l + ctl + "</label>";
+    }).join("");
+
+    function fillForm() {
+      FIELDS.forEach((f) => ($("#sp-" + f.k).value = filled(chat.profile[f.k]) ? chat.profile[f.k] : ""));
+      const n = FIELDS.filter((f) => filled(chat.profile[f.k])).length;
+      $("#s-bar").style.width = (n / FIELDS.length) * 100 + "%";
+      $("#s-count").textContent = "已收集 " + n + " / " + FIELDS.length + " 项" + (n === FIELDS.length ? "，可以给出分类建议" : "，信息不足时只给临时建议");
+    }
+    $("#s-profile").addEventListener("change", () => {
+      FIELDS.forEach((f) => {
+        const v = $("#sp-" + f.k).value.trim();
+        if (v === "") delete chat.profile[f.k];
+        else chat.profile[f.k] = f.t === "number" ? Number(v) : v;
+      });
+      persist();
+      fillForm();
+    });
+
+    /* ---------- 消息渲染 ---------- */
+    const GROUPS = [
+      { k: "safety", l: "保底" },
+      { k: "match", l: "匹配" },
+      { k: "reach", l: "冲刺" },
+    ];
+    function recsHtml(m) {
+      let h = "";
+      if (m.recs)
+        GROUPS.forEach((g) => {
+          const items = m.recs[g.k] || [];
+          h +=
+            '<div class="rec-group ' + g.k + '"><strong>' + g.l + "</strong>" +
+            (items.length
+              ? items.map((r) => '<div class="rec-item"><strong>' + esc(r.school + " " + r.major) + "</strong><div>" + esc(r.reason) + "</div><div>下一步：" + esc(r.nextStep) + '</div><div class="meta">' + sourceLink(r.source, r.updatedAt) + "</div></div>").join("")
+              : '<div class="rec-item muted">暂无符合条件的学校</div>') +
+            "</div>";
+        });
+      if (m.temp && m.temp.length)
+        h += '<div class="rec-group"><strong>临时建议（信息不足）</strong>' + m.temp.map((t) => '<div class="rec-item"><div>' + esc(t.text) + "</div>" + (t.source ? '<div class="meta">' + sourceLink(t.source, t.updatedAt) + "</div>" : "") + "</div>").join("") + "</div>";
+      return h;
+    }
+    function render() {
+      const log = $("#s-log");
+      log.innerHTML =
+        chat.messages.map((m) => '<div class="msg' + (m.role === "user" ? " me" : "") + '"><div class="bubble">' + esc(m.content) + recsHtml(m) + "</div></div>").join("") +
+        (busy ? '<div class="msg"><div class="bubble muted">正在整理建议…</div></div>' : "");
+      log.scrollTop = log.scrollHeight;
+      $("#s-send").disabled = busy;
+      fillForm();
+    }
+
+    /* ---------- 发送 ---------- */
+    async function send(text) {
+      text = text.trim();
+      if (!text || busy) return;
+      chat.messages.push({ role: "user", content: text, ts: Date.now() });
+      $("#s-input").value = "";
+      busy = true;
+      persist();
+      render();
+      st("working");
+      try {
+        const apiMessages = chat.messages.map((m) => ({ role: m.role, content: m.content }));
+        const res = await API.support(apiMessages, chat.profile);
+        Object.assign(chat.profile, res.profileUpdates || {});
+        chat.messages.push({ role: "assistant", content: res.reply, recs: res.recommendations, temp: res.tempAdvice, ts: Date.now() });
+        const m = res.meta || {};
+        // 只记录主题标签，不记录学生原话，给 Analytics 用
+        App.track({ ts: Date.now(), convId: chat.convId, topics: m.topics || [], schools: m.schools || [], major: m.major || null, unresolved: !!m.unresolved });
+        st(res.complete ? "review" : "idle");
+      } catch (err) {
+        chat.messages.push({ role: "assistant", content: "出错了：" + err.message + "。请稍后重试。", ts: Date.now() });
+        st("idle");
+      } finally {
+        busy = false;
+        persist();
+        render();
+      }
+    }
+
+    $("#s-chips").innerHTML = QUICK.map((q) => '<button class="chip" type="button">' + esc(q) + "</button>").join("");
+    $("#s-chips").addEventListener("click", (e) => {
+      const b = e.target.closest(".chip");
+      if (b) send(b.textContent);
+    });
+    $("#s-send").addEventListener("click", () => send($("#s-input").value));
+    $("#s-input").addEventListener("keydown", (e) => {
+      // 输入法组字（选候选词）时的 Enter 不发送
+      if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        send($("#s-input").value);
+      }
+    });
+    $("#s-new").addEventListener("click", () => {
+      if (chat.messages.length > 1 && !confirm("开始新对话会清空当前对话和“我的信息”，确定吗？")) return;
+      chat = newChat();
+      persist();
+      render();
+    });
+    App.on("support", render);
+  })();
+
+  /* ======================================================================
+     AI #4 Analytics
+     ====================================================================== */
+  (function analytics() {
+    const st = (s) => App.setStatus(s, "analytics");
+    let data = null;
+
+    const bars = (rows, nameKey) => {
+      const max = Math.max(1, ...rows.map((r) => r.count));
+      return rows.length
+        ? rows.map((r) => '<div class="bar-row"><span class="name" title="' + esc(r[nameKey]) + '">' + esc(r[nameKey]) + '</span><div class="bar-track"><div class="bar-fill" style="width:' + (r.count / max) * 100 + '%"></div></div><span class="val">' + r.count + "</span></div>").join("")
+        : '<p class="empty">暂无数据</p>';
+    };
+
+    function trendSvg(rows) {
+      const W = 360, H = 170, L = 30, R = 10, T = 12, B = 26;
+      const max = Math.max(1, ...rows.map((r) => r.count));
+      const x = (i) => L + (i * (W - L - R)) / Math.max(1, rows.length - 1);
+      const y = (v) => T + (H - T - B) * (1 - v / max);
+      const pts = rows.map((r, i) => x(i).toFixed(1) + "," + y(r.count).toFixed(1)).join(" ");
+      return (
+        '<svg class="trend-svg" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="最近 7 天问题数量趋势">' +
+        '<line x1="' + L + '" y1="' + y(0) + '" x2="' + (W - R) + '" y2="' + y(0) + '" style="stroke:var(--line)"/>' +
+        '<text x="' + (L - 4) + '" y="' + (T + 4) + '" text-anchor="end">' + max + "</text>" +
+        '<text x="' + (L - 4) + '" y="' + y(0) + '" text-anchor="end">0</text>' +
+        '<polyline points="' + pts + '" fill="none" stroke-width="2.5" stroke-linejoin="round" style="stroke:var(--primary)"/>' +
+        rows.map((r, i) => '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(r.count).toFixed(1) + '" r="3.5" style="fill:var(--primary)"><title>' + esc(r.label + "：" + r.count) + "</title></circle>").join("") +
+        rows.map((r, i) => '<text x="' + x(i).toFixed(1) + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(r.label) + "</text>").join("") +
+        "</svg>"
+      );
+    }
+
+    function render(d) {
+      const c = d.cards;
+      $("#a-kpis").innerHTML = [
+        [c.totalConversations, "总对话数"],
+        [c.highFreqCount, "高频问题数（被问 20 次以上的主题）"],
+        [c.unresolved, "未解决问题数"],
+        [c.topSchool ? esc(c.topSchool.name) : "暂无", c.topSchool ? "热门学校（" + c.topSchool.count + " 次提及）" : "热门学校"],
+      ].map(([n, l], i) => '<div class="kpi"><div class="num"' + (i === 3 ? ' style="font-size:1.15rem"' : "") + ">" + n + '</div><div class="label">' + l + "</div></div>").join("");
+      $("#a-top").innerHTML = bars(d.topQuestions.map((q) => ({ name: q.topic, count: q.count })), "name");
+      $("#a-trend").innerHTML = trendSvg(d.trend);
+      $("#a-majors").innerHTML = bars(d.topMajors, "name");
+      $("#a-schools").innerHTML = bars(d.topSchools, "name");
+      $("#a-tbody").innerHTML = d.topQuestions
+        .map((q) => "<tr><td>" + esc(q.topic) + "</td><td>" + q.count + '</td><td class="nowrap">' + (q.share * 100).toFixed(1) + "%</td><td>" + esc(q.suggestion) + "</td></tr>")
+        .join("");
+      $("#a-next").innerHTML = d.nextWeekContent.map((n) => "<li><strong>" + esc(n.platform) + "：" + esc(n.title) + "</strong><br><span class=\"muted\">" + esc(n.reason) + "</span></li>").join("");
+      $("#a-update").innerHTML = d.needsUpdate.length
+        ? d.needsUpdate.map((n) => "<li><strong>" + esc(n.school + " " + n.major) + '</strong><br><span class="muted">' + esc(n.reason) + "</span></li>").join("")
+        : "<li class=\"muted\">暂时没有需要更新的记录</li>";
+      $("#a-note").textContent = "不显示学生隐私信息：只统计问题主题和次数，不保存、不展示学生原话。" + (d.mockNote ? "（当前：" + d.mockNote + "）" : "");
+    }
+
+    async function load() {
+      st("working");
+      try {
+        data = await API.analytics();
+        render(data);
+      } catch (err) {
+        toast("加载失败：" + err.message, "error");
+      } finally {
+        st("idle");
+      }
+    }
+
+    $("#a-refresh").addEventListener("click", load);
+    $("#a-csv").addEventListener("click", () => {
+      if (!data) return toast("还没有数据可导出", "error");
+      const cols = [
+        { label: "问题", get: (r) => r.topic },
+        { label: "次数", get: (r) => r.count },
+        { label: "占比(%)", get: (r) => (r.share * 100).toFixed(1) },
+        { label: "建议内容", get: (r) => r.suggestion },
+      ];
+      download("analytics-" + today() + ".csv", toCSV(data.topQuestions, cols), "text/csv");
+    });
+    $("#a-reset").addEventListener("click", () => {
+      if (!confirm("清空本机记录的聊天统计事件？示例数据不受影响。")) return;
+      Store.remove("events");
+      load();
+    });
+    App.on("analytics", load);
+  })();
+})();
+
+App.init();
+</script>
+</body>
+</html>
